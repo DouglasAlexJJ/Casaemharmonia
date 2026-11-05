@@ -162,6 +162,9 @@ export async function saveHouseholdSettings(
 
 export async function saveTaskDefinitions(taskDefinitions: TaskDefinition[]): Promise<void> {
   const settingsRef = sharedRef("settings");
+  const firestoreTasks = taskDefinitions.map((task) => Object.fromEntries(
+    Object.entries(task).filter(([, value]) => value !== undefined),
+  ) as TaskDefinition);
   await runTransaction(getDb(), async (transaction) => {
     const snapshot = await transaction.get(settingsRef);
     const current = snapshot.exists() ? snapshot.data() : {};
@@ -171,7 +174,7 @@ export async function saveTaskDefinitions(taskDefinitions: TaskDefinition[]): Pr
       categories: Array.isArray(current.categories) ? current.categories : DEFAULT_CATEGORIES,
       budgets: current.budgets && typeof current.budgets === "object" ? current.budgets : {},
       financialSettings: normalizeFinancialSettings(current.financialSettings ?? DEFAULT_FINANCIAL_SETTINGS),
-      taskDefinitions,
+      taskDefinitions: firestoreTasks,
     });
   });
 }
