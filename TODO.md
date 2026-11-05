@@ -60,7 +60,7 @@
 - Fornecer o arquivo de regras e instruções claras para publicar as regras, registrar o app Web, preencher variáveis de ambiente e cadastrar os dois UIDs no Firestore Console.
 - O código, `firestore.rules` e o guia de configuração estão preparados; publicar as regras no Firebase e cadastrar os dois UIDs ainda dependem do titular do projeto.
 
-## [ ] 11. Push para o repositório indicado e preparação para Vercel
+## [x] 11. Push para o repositório indicado e preparação para Vercel
 - Enviar o commit atualizado ao repositório existente `https://github.com/DouglasAlexJJ/Casaemharmonia`, preservando a história remota e sem sobrescrever arquivos não relacionados.
 - Usar o email de autoria Git `douglasalexjj@outlook.com.br`.
 - Deixar instruções para configurar as variáveis do Firebase e importar o repositório na Vercel; não criar o projeto Vercel, pois o usuário fará essa etapa após o push.
