@@ -2,9 +2,12 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   onSnapshot,
+  query,
   runTransaction,
   setDoc,
+  where,
   writeBatch,
   type Unsubscribe,
 } from "firebase/firestore";
@@ -189,7 +192,12 @@ export async function saveBill(bill: RecurringBill): Promise<void> {
 }
 
 export async function deleteBill(id: string): Promise<void> {
-  await deleteDoc(sharedRef(`bill_${id}`));
+  const db = getDb();
+  const linkedPayments = await getDocs(query(sharedCollection(), where("type", "==", "billPayment"), where("billId", "==", id)));
+  const batch = writeBatch(db);
+  linkedPayments.docs.forEach((payment) => batch.delete(payment.ref));
+  batch.delete(sharedRef(`bill_${id}`));
+  await batch.commit();
 }
 
 export async function saveBillPayment(payment: BillPayment): Promise<void> {
@@ -205,7 +213,12 @@ export async function saveSharedDebt(debt: SharedDebt): Promise<void> {
 }
 
 export async function deleteSharedDebt(id: string): Promise<void> {
-  await deleteDoc(sharedRef(`sharedDebt_${id}`));
+  const db = getDb();
+  const linkedPayments = await getDocs(query(sharedCollection(), where("type", "==", "debtPayment"), where("debtId", "==", id)));
+  const batch = writeBatch(db);
+  linkedPayments.docs.forEach((payment) => batch.delete(payment.ref));
+  batch.delete(sharedRef(`sharedDebt_${id}`));
+  await batch.commit();
 }
 
 export async function saveDebtPayment(payment: DebtPayment): Promise<void> {

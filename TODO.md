@@ -92,3 +92,9 @@
 - Permitir excluir despesas avulsas lançadas na competência selecionada, sem excluir receitas.
 - Permitir remover um lançamento de parcela de dívida e recompor o saldo cadastrado da dívida pelo valor da parcela removida.
 - Para contas fixas e variáveis, permitir cancelar o pagamento já registrado no mês sem remover o cadastro da conta; após cancelar, a conta continua disponível para registrar pagamento novamente.
+
+## [x] 16. Extrato unificado da competência
+- Exibir em um subpainel de Finanças todos os lançamentos da competência selecionada: receitas/despesas avulsas, pagamentos recebidos em Configurações, aportes da reserva, pagamentos de contas e parcelas de dívidas.
+- Permitir editar diretamente no extrato os valores e datas; nos lançamentos avulsos, também a descrição e categoria; nos aportes da reserva, o saldo bancário informado.
+- Permitir excluir diretamente no extrato cada lançamento autorizado, com atualização dos totais do mês.
+- Ao remover uma dívida compartilhada, remover também parcelas vinculadas para que lançamentos órfãos não continuem somando como débito; ignorar parcelas órfãs em totais já existentes.

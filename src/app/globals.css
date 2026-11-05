@@ -767,3 +767,26 @@ button:disabled { opacity: .48; cursor: not-allowed; }
   .debt-payment-history-row { padding-left: 8px; }
   .activity-panel .recent-row { flex-wrap: wrap; }
 }
+
+
+/* Extrato completo e edição inline da competência */
+.ledger-panel { grid-column: 1 / -1; margin-top: 14px; padding: 18px; }
+.ledger-panel .panel-description { max-width: 680px; line-height: 1.5; }
+.ledger-count { color: #87918d; font-size: 9px; white-space: nowrap; }
+.ledger-list { display: grid; margin-top: 12px; }
+.ledger-row { display: grid; grid-template-columns: 30px minmax(120px, 1fr) auto auto; align-items: center; gap: 10px; padding: 10px 2px; border-top: 1px solid #edf0f2; }
+.ledger-row > .recent-icon { display: grid; width: 29px; height: 29px; place-items: center; border-radius: 9px; }
+.ledger-row > strong { font-size: 10px; white-space: nowrap; }
+.ledger-actions { display: flex; gap: 11px; justify-content: flex-end; min-width: 95px; }
+.ledger-actions .text-action { font-size: 9px; }
+.ledger-editor { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 12px 0; padding: 14px; border: 1px solid #e5e8ed; border-radius: 9px; background: #f8f9fb; }
+.ledger-editor .field-label { margin: 0; }
+.ledger-editor input:not([type="number"]), .ledger-editor select { width: 100%; height: 40px; padding: 0 10px; border: 1px solid #dfe1e6; border-radius: 7px; background: #fff; color: #3c414b; font-size: 11px; }
+.ledger-editor-heading { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; gap: 8px; color: #505a68; font-size: 11px; }
+.ledger-editor > .button { justify-self: start; }
+@media (max-width: 680px) {
+  .ledger-row { grid-template-columns: 29px minmax(0, 1fr) auto; gap: 8px; }
+  .ledger-row > strong { grid-column: 2; }
+  .ledger-actions { grid-column: 3; grid-row: 1 / span 2; flex-direction: column; min-width: 0; gap: 6px; }
+  .ledger-editor { grid-template-columns: 1fr; }
+}
