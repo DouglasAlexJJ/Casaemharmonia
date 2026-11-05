@@ -21,11 +21,11 @@
 - Manter visíveis a frequência e o responsável associados a cada atividade.
 
 ## [x] 5. Rotina doméstica inicial baseada no documento fornecido
-- Configurar sem acrescentar atividades ou inventar dias não indicados no PDF.
+- Configurar as atividades do documento e aplicar atualizações posteriores específicas do usuário como substituições das regras anteriores; não acrescentar tarefas.
 - Diárias: Banho dos bebês — Douglas — diário à noite; Trocar bebês pós-banho — Bruna — diário à noite; Separar roupas para o banho — Douglas — diário; Fazer mamá e trocar para creche (manhã) — Douglas — diário; Preparar bolsas e roupas para creche (manhã) — Bruna — diário; Janta dos bebês — Bruna — diário.
 - Revezamento noturno: Dormir com os bebês / Fazer mamá da noite — revezamento em dias alternados — preservar a referência “Bruna em 24/09” indicada no documento, sem ano.
-- Escala da louça: semana ímpar — Douglas — segunda, quarta, sexta e domingo; semana par — Bruna — terça, quinta, sábado e domingo.
-- Limpezas com frequência “Equilibrada”, sem atribuir dias da semana que não constam no documento: Banheiro — Douglas; Quarto dos bebês — Bruna; Quarto PC — Douglas; Cozinha — Bruna; Sala — Douglas; Lavanderia — Bruna; Garagem — Douglas.
+- Escala da louça (atualização posterior do usuário): alternância diária — Douglas em 04/11/2026 e Bruna em 05/11/2026; continuar alternando a cada dia. Esta regra substitui a escala semanal ímpar/par do documento.
+- Limpezas (atualização posterior do usuário): às quartas e sextas — Banheiro, Quarto PC, Sala e Garagem — Douglas; Quarto dos bebês, Cozinha e Lavanderia — Bruna. Esta programação substitui a frequência “Equilibrada” do documento.
 - Mensais/ocasionais: Limpar janelas — Douglas — 1x/mês; Limpar paredes mofadas — Douglas — 1x/mês; Roupa de cama dos bebês — Bruna — 1x/mês ou conforme necessidade; Limpeza dos armários da cozinha — Bruna — 1x/mês; Guarda-roupa dos bebês — Douglas limpa e Bruna organiza — 1x/mês; Lavar cortinas — Douglas — 1x/mês.
 - Compromisso fixo: Encontro/Tempo do Casal — ambos — sábado às 20:00 — prioridade total.
 
@@ -68,3 +68,10 @@
 ## [x] 12. Paleta azul-marinho
 - Remover o verde da identidade visual do site e aplicar azul-marinho/azuis frios em estilo financeiro, preservando tons neutros e cores semânticas de alerta.
 - Atualizar os símbolos de marca exibidos pelo site para corresponder à paleta azul-marinho.
+
+
+## [ ] 13. Nome do site e rotina atualizada
+## [x] 13. Nome do site e rotina atualizada
+- Alterar o nome exibido no site para **Tarefas e Financeiro B&D**. A mudança é apenas visual no site; não renomear o projeto Firebase, o caminho `households/casaemharmonia`, o repositório GitHub nem outros identificadores técnicos existentes.
+- Substituir a escala semanal da louça por alternância diária: Douglas em 04/11/2026 e Bruna em 05/11/2026; continuar alternando um dia para cada pessoa. Mostrar uma tarefa de louça por data nas visões diária e semanal e salvar o check separadamente para cada dia.
+- Agendar todas as limpezas abaixo às quartas e sextas. Douglas: Limpeza: Banheiro; Limpeza: Quarto PC; Limpeza: Sala; Limpeza: Garagem. Bruna: Limpeza: Quarto dos bebês; Limpeza: Cozinha; Limpeza: Lavanderia. Mostrar cada item como tarefa marcável nas visões diária e semanal nas quartas e sextas; não o incluir nas tarefas do dia nos outros dias.

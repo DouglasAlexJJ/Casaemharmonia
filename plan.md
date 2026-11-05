@@ -47,3 +47,10 @@ Estender o painel existente de Douglas e Bruna sem perder as rotinas, tarefas, g
 ## Limites de integração
 
 O usuário confirmou o ID do projeto, informou a configuração do app Web e habilitou o provedor Google. O Preview local usa essa configuração somente em `.env.local`, ignorado pelo Git. Depois do push, o usuário adicionará os valores Web na Vercel, publicará as regras e cadastrará os dois documentos de membro no Firebase Console; os passos estão na documentação. O repositório de destino informado é `https://github.com/DouglasAlexJJ/Casaemharmonia`. Não criar nem configurar o projeto Vercel, pois o usuário fará essa etapa depois do push.
+
+
+## Atualização solicitada — 5 de novembro de 2026
+
+- O nome visível do produto passa a ser **Tarefas e Financeiro B&D** nos elementos de marca, metadados da página e manifesto de rotas. Alterar somente o site/documentação; conservar o projeto Firebase `casaemharmonia-4df2d`, o caminho Firestore `households/casaemharmonia` e o repositório GitHub existentes.
+- A escala da louça passa a alternar diariamente: Douglas em 04/11/2026 e Bruna em 05/11/2026, alternando a pessoa a cada data seguinte ou anterior. Um único item de louça é mostrado por dia, com check individual por data, na visão diária e semanal. O revezamento noturno baseado em “Bruna em 24/09” permanece inalterado.
+- Às quartas e sextas, mostrar como tarefas marcáveis as sete limpezas informadas: Douglas — Banheiro, Quarto PC, Sala e Garagem; Bruna — Quarto dos bebês, Cozinha e Lavanderia. Essas tarefas não entram na visão de dia nos demais dias da semana; a visão semanal as exibe nas datas correspondentes.

@@ -714,3 +714,13 @@ button:disabled { opacity: .48; cursor: not-allowed; }
   .legacy-import-banner { align-items: flex-start; flex-direction: column; padding: 11px 14px; }
   .legacy-import-banner .button, .legacy-import-banner .text-action { width: 100%; }
 }
+
+
+/* Nome atualizado do produto, sem alterar identificadores Firebase. */
+.brand-name-product { max-width: 160px; font-size: 11px; line-height: 1.15; letter-spacing: -.2px; }
+.brand-name-product strong { font-weight: 700; }
+.mobile-brand-title { max-width: 210px; color: var(--ink); font-size: 11px; line-height: 1.2; white-space: nowrap; }
+.mobile-brand-title strong { color: var(--navy-dark); font-weight: 700; }
+@media (max-width: 600px) {
+  .mobile-brand-title { max-width: 190px; font-size: 10px; }
+}

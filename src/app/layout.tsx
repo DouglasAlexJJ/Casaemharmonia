@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Casa em Harmonia | Finanças e rotina",
+  title: "Tarefas e Financeiro B&D | Douglas & Bruna",
   description:
-    "Um espaço compartilhado para Douglas e Bruna acompanharem as finanças e a rotina da casa.",
+    "Um espaço compartilhado para Douglas e Bruna organizarem tarefas da casa e finanças.",
   icons: {
     icon: "/favicon.svg",
   },

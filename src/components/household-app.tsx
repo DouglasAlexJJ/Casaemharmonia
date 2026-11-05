@@ -280,7 +280,7 @@ export default function HouseholdApp() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `casa-em-harmonia-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.download = `tarefas-financeiro-bd-backup-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
     setToast("Backup dos dados compartilhados baixado. Ele não contém dívidas privadas.");
@@ -297,7 +297,7 @@ export default function HouseholdApp() {
         if (!window.confirm("Mesclar os registros compartilhados deste arquivo no Firestore? Os dados privados não são importados.")) return;
         notifyWrite(importSharedBackup(parsed, user.uid), "Backup compartilhado mesclado com a nuvem.");
       } catch {
-        setToast("Esse arquivo não parece ser um backup válido do Casa em Harmonia.");
+        setToast("Esse arquivo não parece ser um backup compartilhado válido.");
       } finally {
         if (fileInput.current) fileInput.current.value = "";
       }
@@ -341,7 +341,7 @@ export default function HouseholdApp() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <a className="brand-lockup" href="#inicio" onClick={(event) => { event.preventDefault(); setSection("finance"); }} aria-label="Casa em Harmonia, início"><span className="brand-mark"><Icon name="home" size={23} strokeWidth={1.65} /></span><span className="brand-name">casa em <strong>harmonia</strong><small>Douglas & Bruna</small></span></a>
+        <a className="brand-lockup" href="#inicio" onClick={(event) => { event.preventDefault(); setSection("finance"); }} aria-label="Tarefas e Financeiro B&D, início"><span className="brand-mark"><Icon name="home" size={23} strokeWidth={1.65} /></span><span className="brand-name brand-name-product"><strong>Tarefas e Financeiro B&amp;D</strong><small>Douglas &amp; Bruna</small></span></a>
         <div className="sidebar-section-label">ESPAÇO DA CASA</div>
         <nav className="side-navigation" aria-label="Navegação principal">
           <button className={section === "finance" ? "nav-item active" : "nav-item"} onClick={() => setSection("finance")}><span className="nav-icon"><Icon name="wallet" size={18} /></span><span>Finanças</span>{section === "finance" && <i className="nav-active-indicator" />}</button>
@@ -357,7 +357,7 @@ export default function HouseholdApp() {
 
       <main className="main-shell">
         <header className="topbar">
-          <div className="mobile-brand"><span className="brand-mark"><Icon name="home" size={19} /></span><span>casa em <strong>harmonia</strong></span></div>
+          <div className="mobile-brand"><span className="brand-mark"><Icon name="home" size={19} /></span><span className="mobile-brand-title">Tarefas e Financeiro <strong>B&amp;D</strong></span></div>
           <div className="topbar-left"><span className="breadcrumb-home"><Icon name="home" size={14} /></span><span className="breadcrumb-separator">/</span><span>{sectionLabel[section]}</span></div>
           <div className="topbar-actions"><span className="local-status"><span className="status-dot" /> Sincronizado na nuvem</span><button className="backup-button" onClick={exportBackup} title="Baixar backup dos dados compartilhados; a área privada é excluída"><Icon name="download" size={16} /><span>Backup compartilhado</span></button><button className="backup-button import-button" onClick={() => fileInput.current?.click()} title="Mesclar backup compartilhado no Firestore"><Icon name="upload" size={16} /><span>Importar</span></button><input className="visually-hidden" ref={fileInput} type="file" accept="application/json,.json" onChange={importBackup} /><span className="top-profile-selector"><span className={`avatar tiny ${profile === "Bruna Toth" ? "avatar-bruna" : ""}`}>{profile === "Douglas Alexander" ? "D" : "B"}</span><strong>{profile.split(" ")[0]}</strong></span></div>
         </header>

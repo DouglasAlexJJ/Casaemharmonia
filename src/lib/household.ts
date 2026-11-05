@@ -3,9 +3,8 @@ export type TransactionType = "income" | "expense";
 export type TaskFrequency =
   | "daily"
   | "alternate"
-  | "dishOdd"
-  | "dishEven"
-  | "balanced"
+  | "dishAlternate"
+  | "cleaning"
   | "monthly"
   | "couple";
 export type CompletionRecord = { by: Profile; uid: string; completedAt: string };
@@ -260,6 +259,13 @@ export function getTaskAssignee(task: TaskDefinition, date: Date): Profile | "Am
   if (task.owner === "both") return "Ambos";
   if (task.owner !== "rotation") return task.owner;
 
+  if (task.frequency === "dishAlternate") {
+    const anchor = Date.UTC(2026, 10, 4);
+    const selected = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+    const daysFromAnchor = Math.round((selected - anchor) / 86400000);
+    return ((daysFromAnchor % 2) + 2) % 2 === 0 ? "Douglas Alexander" : "Bruna Toth";
+  }
+
   // O documento informa Bruna em 24/09, sem ano; a referência é aplicada no ano exibido.
   const anchor = Date.UTC(date.getFullYear(), 8, 24);
   const selected = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
@@ -276,15 +282,14 @@ export const ROUTINE_TASKS: TaskDefinition[] = [
   { id: "daycare-bags", title: "Preparar bolsas e roupas para a creche", frequency: "daily", owner: "Bruna Toth", time: "Manhã" },
   { id: "baby-dinner", title: "Janta dos bebês", frequency: "daily", owner: "Bruna Toth" },
   { id: "night-feed-rotation", title: "Dormir com os bebês / fazer mamá da noite", frequency: "alternate", owner: "rotation", detail: "Dias alternados · Bruna em 24/09", time: "À noite" },
-  { id: "dishes-odd", title: "Escala da louça", frequency: "dishOdd", owner: "Douglas Alexander", detail: "Semana ímpar · segunda, quarta, sexta e domingo" },
-  { id: "dishes-even", title: "Escala da louça", frequency: "dishEven", owner: "Bruna Toth", detail: "Semana par · terça, quinta, sábado e domingo" },
-  { id: "clean-bathroom", title: "Limpeza: banheiro", frequency: "balanced", owner: "Douglas Alexander", detail: "Equilibrada" },
-  { id: "clean-baby-room", title: "Limpeza: quarto dos bebês", frequency: "balanced", owner: "Bruna Toth", detail: "Equilibrada" },
-  { id: "clean-pc-room", title: "Limpeza: quarto PC", frequency: "balanced", owner: "Douglas Alexander", detail: "Equilibrada" },
-  { id: "clean-kitchen", title: "Limpeza: cozinha", frequency: "balanced", owner: "Bruna Toth", detail: "Equilibrada" },
-  { id: "clean-living-room", title: "Limpeza: sala", frequency: "balanced", owner: "Douglas Alexander", detail: "Equilibrada" },
-  { id: "clean-laundry", title: "Limpeza: lavanderia", frequency: "balanced", owner: "Bruna Toth", detail: "Equilibrada" },
-  { id: "clean-garage", title: "Limpeza: garagem", frequency: "balanced", owner: "Douglas Alexander", detail: "Equilibrada" },
+  { id: "dishes-alternating", title: "Escala da louça", frequency: "dishAlternate", owner: "rotation", detail: "Alternância diária · Douglas em 04/11/2026" },
+  { id: "clean-bathroom", title: "Limpeza: Banheiro", frequency: "cleaning", owner: "Douglas Alexander", detail: "Quarta e sexta-feira" },
+  { id: "clean-pc-room", title: "Limpeza: Quarto PC", frequency: "cleaning", owner: "Douglas Alexander", detail: "Quarta e sexta-feira" },
+  { id: "clean-living-room", title: "Limpeza: Sala", frequency: "cleaning", owner: "Douglas Alexander", detail: "Quarta e sexta-feira" },
+  { id: "clean-garage", title: "Limpeza: Garagem", frequency: "cleaning", owner: "Douglas Alexander", detail: "Quarta e sexta-feira" },
+  { id: "clean-baby-room", title: "Limpeza: Quarto dos bebês", frequency: "cleaning", owner: "Bruna Toth", detail: "Quarta e sexta-feira" },
+  { id: "clean-kitchen", title: "Limpeza: Cozinha", frequency: "cleaning", owner: "Bruna Toth", detail: "Quarta e sexta-feira" },
+  { id: "clean-laundry", title: "Limpeza: Lavanderia", frequency: "cleaning", owner: "Bruna Toth", detail: "Quarta e sexta-feira" },
   { id: "monthly-windows", title: "Limpar janelas", frequency: "monthly", owner: "Douglas Alexander", detail: "1x por mês" },
   { id: "monthly-mold", title: "Limpar paredes mofadas", frequency: "monthly", owner: "Douglas Alexander", detail: "1x por mês" },
   { id: "monthly-baby-bedding", title: "Trocar roupa de cama dos bebês", frequency: "monthly", owner: "Bruna Toth", detail: "1x por mês ou conforme necessidade" },
@@ -297,18 +302,16 @@ export const ROUTINE_TASKS: TaskDefinition[] = [
 
 export function getTasksForDate(date: Date): TaskDefinition[] {
   const weekday = date.getDay();
-  const isOddWeek = getIsoWeekNumber(date) % 2 === 1;
   return ROUTINE_TASKS.filter((task) => {
-    if (task.frequency === "daily" || task.frequency === "alternate") return true;
-    if (task.frequency === "dishOdd") return isOddWeek && [0, 1, 3, 5].includes(weekday);
-    if (task.frequency === "dishEven") return !isOddWeek && [0, 2, 4, 6].includes(weekday);
+    if (task.frequency === "daily" || task.frequency === "alternate" || task.frequency === "dishAlternate") return true;
+    if (task.frequency === "cleaning") return weekday === 3 || weekday === 5;
     if (task.frequency === "couple") return weekday === 6;
     return false;
   });
 }
 
 export function getTasksForRoutine(): TaskDefinition[] {
-  return ROUTINE_TASKS.filter((task) => ["daily", "alternate", "dishOdd", "dishEven", "balanced"].includes(task.frequency));
+  return ROUTINE_TASKS.filter((task) => ["daily", "alternate", "dishAlternate", "cleaning"].includes(task.frequency));
 }
 
 export function getTasksForMonth(): TaskDefinition[] {
