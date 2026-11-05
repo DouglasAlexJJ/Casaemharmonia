@@ -80,7 +80,7 @@ function TaskCard({
   return (
     <article className={`task-card ${completed ? "task-completed" : ""} ${task.priority ? "task-priority" : ""}`}>
       <button className={`task-check ${completed ? "checked" : ""}`} type="button" role="checkbox" aria-checked={completed} aria-label={`${completed ? "Desmarcar" : "Concluir"}: ${task.title}`} onClick={() => onToggle(key)}><Icon name="check" size={15} strokeWidth={2.4} /></button>
-      <div className="task-copy"><div className="task-title-line"><strong>{task.title}</strong>{task.priority && <span className="priority-tag"><Icon name="heart" size={13} /> Prioridade total</span>}</div>{showDetail && task.detail && <span className="task-detail">{task.detail}</span>}{completed && completedBy && <span className="task-completed-by">Concluída por {completedBy.split(" ")[0]}</span>}</div>
+      <div className="task-copy"><div className="task-title-line"><strong>{task.title}</strong>{task.priority && <span className="priority-tag"><Icon name="heart" size={13} /> Prioridade total</span>}</div>{showDetail && task.detail && <span className="task-detail">{task.detail}</span>}{completed && completedBy && <span className="task-completed-by">Concluída por {completedBy.by.split(" ")[0]}</span>}</div>
       <div className="task-meta"><span className={`assignee-chip ${owner === "Ambos" ? "assignee-both" : owner === "Douglas Alexander" ? "assignee-douglas" : "assignee-bruna"}`}><i>{owner === "Ambos" ? "D+B" : owner === "Douglas Alexander" ? "D" : "B"}</i>{owner === "Ambos" ? "Ambos" : owner.split(" ")[0]}</span>{task.time && <span className="task-time"><Icon name="clock" size={13} />{task.time}</span>}</div>
     </article>
   );
@@ -141,7 +141,7 @@ export default function TasksView({ data, profile, onToggle }: TasksViewProps) {
 
       {scope === "month" && <section className="panel task-section monthly-section"><div className="task-section-heading"><div><p className="eyebrow">CUIDADOS DA CASA</p><h2>Uma vez por mês</h2></div><div className="month-navigator task-month-navigator"><button className="icon-button" onClick={() => setViewMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))} aria-label="Mês anterior"><Icon name="chevronLeft" /></button><span>{monthLabel}</span><button className="icon-button" onClick={() => setViewMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))} aria-label="Próximo mês"><Icon name="chevronRight" /></button></div></div><div className="month-progress-note"><span className="month-progress-icon"><Icon name="check" size={17} /></span><span>{monthlyDone} de {getTasksForMonth().length} cuidados concluídos em {viewMonth.toLocaleDateString("pt-BR", { month: "long" })}.</span></div><div className="task-list monthly-task-list">{monthlyTasks.map((task) => <TaskCard key={task.id} task={task} date={viewMonth} data={data} onToggle={() => toggleTask(task, viewMonth)} />)}</div><p className="task-footnote">A troca da roupa de cama dos bebês pode ser marcada também quando feita por necessidade. As duas etapas do guarda-roupa ficam separadas para registrar quem limpou e quem organizou.</p></section>}
 
-      <div className="data-note"><span className="status-dot" /> As tarefas ficam salvas neste navegador. Um backup JSON permite transferir a rotina e os registros.</div>
+      <div className="data-note"><span className="status-dot" /> As tarefas são sincronizadas pelo Firestore entre as contas autorizadas; os dados privados não entram no backup compartilhado.</div>
     </div>
   );
 }

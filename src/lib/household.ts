@@ -8,6 +8,7 @@ export type TaskFrequency =
   | "balanced"
   | "monthly"
   | "couple";
+export type CompletionRecord = { by: Profile; uid: string; completedAt: string };
 
 export type Transaction = {
   id: string;
@@ -17,6 +18,7 @@ export type Transaction = {
   description: string;
   category: string;
   createdBy: Profile;
+  createdByUid: string;
 };
 
 export type TaskDefinition = {
@@ -29,12 +31,126 @@ export type TaskDefinition = {
   priority?: boolean;
 };
 
+export type FinancialSettings = {
+  baseSalaries: Record<Profile, number>;
+  reservePercent: number;
+  investmentPercent: number;
+  reserveBalance: number;
+  reserveGoal: number;
+  allowancePercentages: Record<Profile, number>;
+};
+
+export type RecurringBill = {
+  id: string;
+  name: string;
+  category: string;
+  kind: "fixed" | "variable";
+  plannedAmount: number;
+  dueDay?: number;
+};
+
+export type BillPayment = {
+  id: string;
+  billId: string;
+  month: string;
+  amount: number;
+  paidOn: string;
+  category?: string;
+};
+
+export type SharedDebt = {
+  id: string;
+  name: string;
+  currentBalance: number;
+  monthlyPayment: number;
+  dueDay?: number;
+  note?: string;
+};
+
+export type DebtPayment = {
+  id: string;
+  debtId: string;
+  month: string;
+  amount: number;
+  paidOn: string;
+};
+
+export type MonthlyDeposit = {
+  id: string;
+  month: string;
+  uid: string;
+  profile: Profile;
+  amount: number;
+  receivedOn: string;
+};
+
 export type HouseholdData = {
-  version: 1;
+  version: 2;
   transactions: Transaction[];
   categories: string[];
   budgets: Record<string, number>;
-  completions: Record<string, Profile>;
+  completions: Record<string, CompletionRecord>;
+  financialSettings: FinancialSettings;
+  bills: RecurringBill[];
+  billPayments: BillPayment[];
+  sharedDebts: SharedDebt[];
+  debtPayments: DebtPayment[];
+  deposits: MonthlyDeposit[];
+};
+
+export function depositDocumentId(deposit: Pick<MonthlyDeposit, "month" | "profile">): string {
+  const profileKey = deposit.profile === "Douglas Alexander" ? "douglas" : "bruna";
+  return `deposit_${deposit.month}_${profileKey}`;
+}
+
+export function uniqueMonthlyDeposits(deposits: MonthlyDeposit[]): MonthlyDeposit[] {
+  const unique = new Map<string, MonthlyDeposit>();
+  for (const deposit of deposits) {
+    const key = `${deposit.month}:${deposit.uid}:${deposit.profile}`;
+    const previous = unique.get(key);
+    const depositIsCanonical = deposit.id === depositDocumentId(deposit);
+    const previousIsCanonical = previous ? previous.id === depositDocumentId(previous) : false;
+    if (!previous || (depositIsCanonical && !previousIsCanonical)
+      || (depositIsCanonical === previousIsCanonical && deposit.receivedOn.localeCompare(previous.receivedOn) >= 0)) {
+      unique.set(key, deposit);
+    }
+  }
+  return [...unique.values()];
+}
+
+export type PrivateEntry = {
+  id: string;
+  kind: "expense" | "debt";
+  title: string;
+  amount?: number;
+  month?: string;
+  date?: string;
+  category?: string;
+  balance?: number;
+  monthlyPayment?: number;
+  dueDate?: string;
+  note?: string;
+  payments?: Record<string, number>;
+};
+
+export type HouseholdMember = {
+  uid: string;
+  profile: Profile;
+  active: boolean;
+};
+
+export type MonthlyPlan = {
+  month: string;
+  baseSalaryTotal: number;
+  actualDeposits: number;
+  missingDeposits: Profile[];
+  reserveContribution: number;
+  investmentContribution: number;
+  plannedBillsAndDebts: number;
+  remaining: number;
+  deficit: number;
+  allowances: Record<Profile, number>;
+  isProjection: boolean;
 };
 
 export const PROFILES: Profile[] = ["Douglas Alexander", "Bruna Toth"];
@@ -47,188 +163,75 @@ export const DEFAULT_CATEGORIES = [
   "Saúde",
   "Lazer",
   "Contas",
+  "Dívidas",
   "Outros",
 ];
 
-export const ROUTINE_TASKS: TaskDefinition[] = [
-  {
-    id: "baby-bath",
-    title: "Banho dos bebês",
-    frequency: "daily",
-    owner: "Douglas Alexander",
-    time: "À noite",
-  },
-  {
-    id: "baby-after-bath",
-    title: "Trocar bebês pós-banho",
-    frequency: "daily",
-    owner: "Bruna Toth",
-    time: "À noite",
-  },
-  {
-    id: "bath-clothes",
-    title: "Separar roupas para o banho",
-    frequency: "daily",
-    owner: "Douglas Alexander",
-  },
-  {
-    id: "morning-babies",
-    title: "Fazer mamá e trocar para a creche",
-    frequency: "daily",
-    owner: "Douglas Alexander",
-    time: "Manhã",
-  },
-  {
-    id: "daycare-bags",
-    title: "Preparar bolsas e roupas para a creche",
-    frequency: "daily",
-    owner: "Bruna Toth",
-    time: "Manhã",
-  },
-  {
-    id: "baby-dinner",
-    title: "Janta dos bebês",
-    frequency: "daily",
-    owner: "Bruna Toth",
-  },
-  {
-    id: "night-feed-rotation",
-    title: "Dormir com os bebês / fazer mamá da noite",
-    frequency: "alternate",
-    owner: "rotation",
-    detail: "Dias alternados · Bruna em 24/09",
-    time: "À noite",
-  },
-  {
-    id: "dishes-odd",
-    title: "Escala da louça",
-    frequency: "dishOdd",
-    owner: "Douglas Alexander",
-    detail: "Semana ímpar · segunda, quarta, sexta e domingo",
-  },
-  {
-    id: "dishes-even",
-    title: "Escala da louça",
-    frequency: "dishEven",
-    owner: "Bruna Toth",
-    detail: "Semana par · terça, quinta, sábado e domingo",
-  },
-  {
-    id: "clean-bathroom",
-    title: "Limpeza: banheiro",
-    frequency: "balanced",
-    owner: "Douglas Alexander",
-    detail: "Equilibrada",
-  },
-  {
-    id: "clean-baby-room",
-    title: "Limpeza: quarto dos bebês",
-    frequency: "balanced",
-    owner: "Bruna Toth",
-    detail: "Equilibrada",
-  },
-  {
-    id: "clean-pc-room",
-    title: "Limpeza: quarto PC",
-    frequency: "balanced",
-    owner: "Douglas Alexander",
-    detail: "Equilibrada",
-  },
-  {
-    id: "clean-kitchen",
-    title: "Limpeza: cozinha",
-    frequency: "balanced",
-    owner: "Bruna Toth",
-    detail: "Equilibrada",
-  },
-  {
-    id: "clean-living-room",
-    title: "Limpeza: sala",
-    frequency: "balanced",
-    owner: "Douglas Alexander",
-    detail: "Equilibrada",
-  },
-  {
-    id: "clean-laundry",
-    title: "Limpeza: lavanderia",
-    frequency: "balanced",
-    owner: "Bruna Toth",
-    detail: "Equilibrada",
-  },
-  {
-    id: "clean-garage",
-    title: "Limpeza: garagem",
-    frequency: "balanced",
-    owner: "Douglas Alexander",
-    detail: "Equilibrada",
-  },
-  {
-    id: "monthly-windows",
-    title: "Limpar janelas",
-    frequency: "monthly",
-    owner: "Douglas Alexander",
-    detail: "1x por mês",
-  },
-  {
-    id: "monthly-mold",
-    title: "Limpar paredes mofadas",
-    frequency: "monthly",
-    owner: "Douglas Alexander",
-    detail: "1x por mês",
-  },
-  {
-    id: "monthly-baby-bedding",
-    title: "Trocar roupa de cama dos bebês",
-    frequency: "monthly",
-    owner: "Bruna Toth",
-    detail: "1x por mês ou conforme necessidade",
-  },
-  {
-    id: "monthly-kitchen-cabinets",
-    title: "Limpar armários da cozinha",
-    frequency: "monthly",
-    owner: "Bruna Toth",
-    detail: "1x por mês",
-  },
-  {
-    id: "monthly-wardrobe-clean",
-    title: "Limpar guarda-roupa dos bebês",
-    frequency: "monthly",
-    owner: "Douglas Alexander",
-    detail: "1x por mês · etapa de limpeza",
-  },
-  {
-    id: "monthly-wardrobe-organize",
-    title: "Organizar guarda-roupa dos bebês",
-    frequency: "monthly",
-    owner: "Bruna Toth",
-    detail: "1x por mês · etapa de organização",
-  },
-  {
-    id: "monthly-curtains",
-    title: "Lavar cortinas",
-    frequency: "monthly",
-    owner: "Douglas Alexander",
-    detail: "1x por mês",
-  },
-  {
-    id: "couple-time",
-    title: "Encontro / Tempo do Casal",
-    frequency: "couple",
-    owner: "both",
-    detail: "Sábado às 20:00",
-    time: "20:00",
-    priority: true,
-  },
-];
+export const DEFAULT_FINANCIAL_SETTINGS: FinancialSettings = {
+  baseSalaries: { "Douglas Alexander": 0, "Bruna Toth": 0 },
+  reservePercent: 0,
+  investmentPercent: 0,
+  reserveBalance: 0,
+  reserveGoal: 0,
+  allowancePercentages: { "Douglas Alexander": 50, "Bruna Toth": 50 },
+};
+
+export function normalizeFinancialSettings(value: unknown): FinancialSettings {
+  if (!value || typeof value !== "object") return { ...DEFAULT_FINANCIAL_SETTINGS };
+  const incoming = value as Partial<FinancialSettings>;
+  const salaries = incoming.baseSalaries as Partial<Record<Profile, number>> | undefined;
+  const shares = incoming.allowancePercentages as Partial<Record<Profile, number>> | undefined;
+  const validShares = hasValidAllowanceSplit(incoming);
+  return {
+    baseSalaries: {
+      "Douglas Alexander": validNonNegative(salaries?.["Douglas Alexander"]),
+      "Bruna Toth": validNonNegative(salaries?.["Bruna Toth"]),
+    },
+    reservePercent: validPercent(incoming.reservePercent),
+    investmentPercent: validPercent(incoming.investmentPercent),
+    reserveBalance: validNonNegative(incoming.reserveBalance),
+    reserveGoal: validNonNegative(incoming.reserveGoal),
+    allowancePercentages: validShares ? {
+      "Douglas Alexander": validPercent(shares?.["Douglas Alexander"]),
+      "Bruna Toth": validPercent(shares?.["Bruna Toth"]),
+    } : { ...DEFAULT_FINANCIAL_SETTINGS.allowancePercentages },
+  };
+}
+
+export function hasValidAllowanceSplit(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  const settings = value as { allowancePercentages?: Partial<Record<Profile, unknown>> };
+  const shares = settings.allowancePercentages;
+  const douglas = Number(shares?.["Douglas Alexander"]);
+  const bruna = Number(shares?.["Bruna Toth"]);
+  return Number.isFinite(douglas) && Number.isFinite(bruna)
+    && douglas >= 0 && douglas <= 100
+    && bruna >= 0 && bruna <= 100
+    && Math.abs(douglas + bruna - 100) < 0.001;
+}
+
+function validNonNegative(value: unknown): number {
+  const parsed = typeof value === "number" ? value : Number(value ?? 0);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function validPercent(value: unknown): number {
+  return Math.min(100, validNonNegative(value));
+}
 
 export function createInitialData(): HouseholdData {
   return {
-    version: 1,
+    version: 2,
     transactions: [],
     categories: [...DEFAULT_CATEGORIES],
     budgets: {},
     completions: {},
+    financialSettings: { ...DEFAULT_FINANCIAL_SETTINGS },
+    bills: [],
+    billPayments: [],
+    sharedDebts: [],
+    debtPayments: [],
+    deposits: [],
   };
 }
 
@@ -265,11 +268,36 @@ export function getTaskAssignee(task: TaskDefinition, date: Date): Profile | "Am
   return startsWithBruna ? "Bruna Toth" : "Douglas Alexander";
 }
 
+export const ROUTINE_TASKS: TaskDefinition[] = [
+  { id: "baby-bath", title: "Banho dos bebês", frequency: "daily", owner: "Douglas Alexander", time: "À noite" },
+  { id: "baby-after-bath", title: "Trocar bebês pós-banho", frequency: "daily", owner: "Bruna Toth", time: "À noite" },
+  { id: "bath-clothes", title: "Separar roupas para o banho", frequency: "daily", owner: "Douglas Alexander" },
+  { id: "morning-babies", title: "Fazer mamá e trocar para a creche", frequency: "daily", owner: "Douglas Alexander", time: "Manhã" },
+  { id: "daycare-bags", title: "Preparar bolsas e roupas para a creche", frequency: "daily", owner: "Bruna Toth", time: "Manhã" },
+  { id: "baby-dinner", title: "Janta dos bebês", frequency: "daily", owner: "Bruna Toth" },
+  { id: "night-feed-rotation", title: "Dormir com os bebês / fazer mamá da noite", frequency: "alternate", owner: "rotation", detail: "Dias alternados · Bruna em 24/09", time: "À noite" },
+  { id: "dishes-odd", title: "Escala da louça", frequency: "dishOdd", owner: "Douglas Alexander", detail: "Semana ímpar · segunda, quarta, sexta e domingo" },
+  { id: "dishes-even", title: "Escala da louça", frequency: "dishEven", owner: "Bruna Toth", detail: "Semana par · terça, quinta, sábado e domingo" },
+  { id: "clean-bathroom", title: "Limpeza: banheiro", frequency: "balanced", owner: "Douglas Alexander", detail: "Equilibrada" },
+  { id: "clean-baby-room", title: "Limpeza: quarto dos bebês", frequency: "balanced", owner: "Bruna Toth", detail: "Equilibrada" },
+  { id: "clean-pc-room", title: "Limpeza: quarto PC", frequency: "balanced", owner: "Douglas Alexander", detail: "Equilibrada" },
+  { id: "clean-kitchen", title: "Limpeza: cozinha", frequency: "balanced", owner: "Bruna Toth", detail: "Equilibrada" },
+  { id: "clean-living-room", title: "Limpeza: sala", frequency: "balanced", owner: "Douglas Alexander", detail: "Equilibrada" },
+  { id: "clean-laundry", title: "Limpeza: lavanderia", frequency: "balanced", owner: "Bruna Toth", detail: "Equilibrada" },
+  { id: "clean-garage", title: "Limpeza: garagem", frequency: "balanced", owner: "Douglas Alexander", detail: "Equilibrada" },
+  { id: "monthly-windows", title: "Limpar janelas", frequency: "monthly", owner: "Douglas Alexander", detail: "1x por mês" },
+  { id: "monthly-mold", title: "Limpar paredes mofadas", frequency: "monthly", owner: "Douglas Alexander", detail: "1x por mês" },
+  { id: "monthly-baby-bedding", title: "Trocar roupa de cama dos bebês", frequency: "monthly", owner: "Bruna Toth", detail: "1x por mês ou conforme necessidade" },
+  { id: "monthly-kitchen-cabinets", title: "Limpar armários da cozinha", frequency: "monthly", owner: "Bruna Toth", detail: "1x por mês" },
+  { id: "monthly-wardrobe-clean", title: "Limpar guarda-roupa dos bebês", frequency: "monthly", owner: "Douglas Alexander", detail: "1x por mês · etapa de limpeza" },
+  { id: "monthly-wardrobe-organize", title: "Organizar guarda-roupa dos bebês", frequency: "monthly", owner: "Bruna Toth", detail: "1x por mês · etapa de organização" },
+  { id: "monthly-curtains", title: "Lavar cortinas", frequency: "monthly", owner: "Douglas Alexander", detail: "1x por mês" },
+  { id: "couple-time", title: "Encontro / Tempo do Casal", frequency: "couple", owner: "both", detail: "Sábado às 20:00", time: "20:00", priority: true },
+];
+
 export function getTasksForDate(date: Date): TaskDefinition[] {
   const weekday = date.getDay();
-  const weekNumber = getIsoWeekNumber(date);
-  const isOddWeek = weekNumber % 2 === 1;
-
+  const isOddWeek = getIsoWeekNumber(date) % 2 === 1;
   return ROUTINE_TASKS.filter((task) => {
     if (task.frequency === "daily" || task.frequency === "alternate") return true;
     if (task.frequency === "dishOdd") return isOddWeek && [0, 1, 3, 5].includes(weekday);
@@ -280,11 +308,7 @@ export function getTasksForDate(date: Date): TaskDefinition[] {
 }
 
 export function getTasksForRoutine(): TaskDefinition[] {
-  return ROUTINE_TASKS.filter((task) =>
-    ["daily", "alternate", "dishOdd", "dishEven", "balanced"].includes(
-      task.frequency,
-    ),
-  );
+  return ROUTINE_TASKS.filter((task) => ["daily", "alternate", "dishOdd", "dishEven", "balanced"].includes(task.frequency));
 }
 
 export function getTasksForMonth(): TaskDefinition[] {
@@ -296,19 +320,71 @@ export function taskCompletionKey(task: TaskDefinition, date: Date): string {
   return `${task.id}:${localDateKey(date)}`;
 }
 
+export function calculateMonthlyPlan(data: HouseholdData, month: string): MonthlyPlan {
+  const settings = normalizeFinancialSettings(data.financialSettings);
+  const monthDeposits = uniqueMonthlyDeposits(data.deposits).filter((deposit) => deposit.month === month);
+  const actualDeposits = monthDeposits.reduce((sum, deposit) => sum + deposit.amount, 0);
+  const missingDeposits = PROFILES.filter((profile) => !monthDeposits.some((deposit) => deposit.profile === profile));
+  const baseSalaryTotal = PROFILES.reduce((sum, profile) => sum + settings.baseSalaries[profile], 0);
+  const reserveContribution = actualDeposits * settings.reservePercent / 100;
+  const investmentContribution = baseSalaryTotal * settings.investmentPercent / 100;
+  const billForecast = data.bills.reduce((sum, bill) => {
+    const payment = data.billPayments.find((item) => item.billId === bill.id && item.month === month);
+    return sum + (payment?.amount ?? bill.plannedAmount);
+  }, 0);
+  const debtForecast = data.sharedDebts.reduce((sum, debt) => {
+    const payment = data.debtPayments.find((item) => item.debtId === debt.id && item.month === month);
+    const estimatedPayment = Math.min(Math.max(0, debt.monthlyPayment || 0), Math.max(0, debt.currentBalance || 0));
+    return sum + (payment?.amount ?? estimatedPayment);
+  }, 0);
+  const plannedBillsAndDebts = billForecast + debtForecast;
+  const remaining = actualDeposits - reserveContribution - investmentContribution - plannedBillsAndDebts;
+  const available = Math.max(0, remaining);
+  const allowances = {
+    "Douglas Alexander": available * settings.allowancePercentages["Douglas Alexander"] / 100,
+    "Bruna Toth": available * settings.allowancePercentages["Bruna Toth"] / 100,
+  };
+  const isProjection = missingDeposits.length > 0 || data.bills.some((bill) => !data.billPayments.some((payment) => payment.billId === bill.id && payment.month === month)) || data.sharedDebts.some((debt) => !data.debtPayments.some((payment) => payment.debtId === debt.id && payment.month === month));
+  return {
+    month,
+    baseSalaryTotal,
+    actualDeposits,
+    missingDeposits,
+    reserveContribution,
+    investmentContribution,
+    plannedBillsAndDebts,
+    remaining,
+    deficit: Math.max(0, -remaining),
+    allowances,
+    isProjection,
+  };
+}
+
 export function safeImportedData(value: unknown): HouseholdData | null {
   if (!value || typeof value !== "object") return null;
-  const candidate = value as Partial<HouseholdData>;
-  if (
-    candidate.version !== 1 ||
-    !Array.isArray(candidate.transactions) ||
-    !Array.isArray(candidate.categories) ||
-    !candidate.budgets ||
-    typeof candidate.budgets !== "object" ||
-    !candidate.completions ||
-    typeof candidate.completions !== "object"
-  ) {
-    return null;
+  const candidate = value as Partial<HouseholdData> & { version?: number };
+  if (!Array.isArray(candidate.transactions) || !Array.isArray(candidate.categories) || !candidate.budgets || typeof candidate.budgets !== "object") return null;
+  if (candidate.financialSettings !== undefined && !hasValidAllowanceSplit(candidate.financialSettings)) return null;
+  const base = createInitialData();
+  const completions = candidate.completions && typeof candidate.completions === "object" ? candidate.completions : {};
+  const normalizedCompletions: Record<string, CompletionRecord> = {};
+  for (const [key, item] of Object.entries(completions)) {
+    if (typeof item === "string" && (item === "Douglas Alexander" || item === "Bruna Toth")) normalizedCompletions[key] = { by: item, uid: "legacy-backup", completedAt: "" };
+    else if (item && typeof item === "object" && "by" in item && "uid" in item) normalizedCompletions[key] = item as CompletionRecord;
   }
-  return candidate as HouseholdData;
+  return {
+    ...base,
+    ...candidate,
+    version: 2,
+    categories: candidate.categories.filter((item): item is string => typeof item === "string"),
+    budgets: candidate.budgets as Record<string, number>,
+    completions: normalizedCompletions,
+    financialSettings: normalizeFinancialSettings(candidate.financialSettings),
+    bills: Array.isArray(candidate.bills) ? candidate.bills : [],
+    billPayments: Array.isArray(candidate.billPayments) ? candidate.billPayments : [],
+    sharedDebts: Array.isArray(candidate.sharedDebts) ? candidate.sharedDebts : [],
+    debtPayments: Array.isArray(candidate.debtPayments) ? candidate.debtPayments : [],
+    deposits: uniqueMonthlyDeposits(Array.isArray(candidate.deposits) ? candidate.deposits as MonthlyDeposit[] : []),
+    transactions: candidate.transactions as Transaction[],
+  };
 }

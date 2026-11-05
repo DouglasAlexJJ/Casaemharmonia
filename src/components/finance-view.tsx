@@ -10,7 +10,7 @@ import {
 } from "@/lib/household";
 import Icon from "@/components/icon";
 
-type TransactionDraft = Omit<Transaction, "id" | "createdBy">;
+type TransactionDraft = Omit<Transaction, "id" | "createdBy" | "createdByUid">;
 
 type FinanceViewProps = {
   data: HouseholdData;
@@ -21,12 +21,39 @@ type FinanceViewProps = {
   onSaveBudgets: (budgets: Record<string, number>, categories: string[]) => void;
 };
 
-const PALETTE = ["#286754", "#d99b54", "#849887", "#b66550", "#5c7c9c", "#aa9bb0", "#9b824f", "#c7c4b8"];
+const PALETTE = ["#283d67", "#d99b54", "#848b98", "#b66550", "#5c7c9c", "#aa9bb0", "#9b824f", "#c7c4b8"];
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const monthNames = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
 function formatMoney(value: number) {
   return currency.format(value);
+}
+
+function monthlyOutflows(data: HouseholdData, key: string) {
+  const transactions = data.transactions
+    .filter((item) => item.type === "expense" && item.date.slice(0, 7) === key)
+    .reduce((sum, item) => sum + item.amount, 0);
+  const bills = data.billPayments
+    .filter((item) => item.month === key)
+    .reduce((sum, item) => sum + item.amount, 0);
+  const debts = data.debtPayments
+    .filter((item) => item.month === key)
+    .reduce((sum, item) => sum + item.amount, 0);
+  return transactions + bills + debts;
+}
+
+function categoryOutflows(data: HouseholdData, key: string, category: string) {
+  const transactions = data.transactions
+    .filter((item) => item.type === "expense" && item.date.slice(0, 7) === key && item.category === category)
+    .reduce((sum, item) => sum + item.amount, 0);
+  const billIds = new Set(data.bills.filter((bill) => bill.category === category).map((bill) => bill.id));
+  const bills = data.billPayments
+    .filter((item) => item.month === key && (item.category === category || (!item.category && billIds.has(item.billId))))
+    .reduce((sum, item) => sum + item.amount, 0);
+  const debts = category === "Dívidas"
+    ? data.debtPayments.filter((item) => item.month === key).reduce((sum, item) => sum + item.amount, 0)
+    : 0;
+  return transactions + bills + debts;
 }
 
 function formatDay(value: string) {
@@ -82,6 +109,7 @@ function TransactionModal({
             <button type="button" className={type === "expense" ? "segment active expense" : "segment"} onClick={() => setType("expense")}><Icon name="arrowDown" size={16} /> Despesa</button>
             <button type="button" className={type === "income" ? "segment active income" : "segment"} onClick={() => setType("income")}><Icon name="arrowUp" size={16} /> Receita</button>
           </div>
+          {type === "income" && <p className="form-note">Depósitos mensais são registrados em Planejamento, para não contar o mesmo salário duas vezes.</p>}
           <label className="field-label">Descrição
             <input autoFocus required value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Ex.: mercado da semana" />
           </label>
@@ -173,13 +201,18 @@ export default function FinanceView({
     () => data.transactions.filter((item) => item.date.slice(0, 7) === currentMonth),
     [data.transactions, currentMonth],
   );
-  const income = monthTransactions.filter((item) => item.type === "income").reduce((sum, item) => sum + item.amount, 0);
-  const expenses = monthTransactions.filter((item) => item.type === "expense").reduce((sum, item) => sum + item.amount, 0);
+  const monthDeposits = data.deposits.filter((item) => item.month === currentMonth);
+  const incomeTransactions = monthTransactions.filter((item) => item.type === "income");
+  const expenseTransactions = monthTransactions.filter((item) => item.type === "expense");
+  const billPaymentsThisMonth = data.billPayments.filter((item) => item.month === currentMonth);
+  const debtPaymentsThisMonth = data.debtPayments.filter((item) => item.month === currentMonth);
+  const income = incomeTransactions.reduce((sum, item) => sum + item.amount, 0) + monthDeposits.reduce((sum, item) => sum + item.amount, 0);
+  const expenses = monthlyOutflows(data, currentMonth);
   const balance = income - expenses;
   const categorySpending = data.categories.map((category, index) => ({
     category,
     color: PALETTE[index % PALETTE.length],
-    amount: monthTransactions.filter((item) => item.type === "expense" && item.category === category).reduce((sum, item) => sum + item.amount, 0),
+    amount: categoryOutflows(data, currentMonth, category),
   })).filter((item) => item.amount > 0).sort((a, b) => b.amount - a.amount);
   const totalCategorySpending = categorySpending.reduce((sum, item) => sum + item.amount, 0);
   let cursor = 0;
@@ -189,9 +222,9 @@ export default function FinanceView({
         const start = cursor;
         cursor += (item.amount / totalCategorySpending) * 360;
         return `${item.color} ${start}deg ${cursor}deg`;
-      }).join(", ")})`;
+  }).join(", ")})`;
   const budgetRows = data.categories.map((category, index) => {
-    const spent = monthTransactions.filter((item) => item.type === "expense" && item.category === category).reduce((sum, item) => sum + item.amount, 0);
+    const spent = categoryOutflows(data, currentMonth, category);
     return { category, spent, budget: data.budgets[category] ?? 0, color: PALETTE[index % PALETTE.length] };
   }).filter((row) => row.budget > 0).sort((a, b) => b.spent / b.budget - a.spent / a.budget);
   const overBudget = budgetRows.find((row) => row.spent > row.budget);
@@ -200,7 +233,7 @@ export default function FinanceView({
   const trend = Array.from({ length: 6 }, (_, index) => {
     const date = new Date(month.getFullYear(), month.getMonth() - 5 + index, 1);
     const key = monthKey(date);
-    const value = data.transactions.filter((item) => item.type === "expense" && item.date.slice(0, 7) === key).reduce((sum, item) => sum + item.amount, 0);
+    const value = monthlyOutflows(data, key);
     return { label: date.toLocaleDateString("pt-BR", { month: "short" }).replace(".", ""), value, key, current: key === currentMonth };
   });
   const trendMax = Math.max(...trend.map((item) => item.value), 1);
@@ -231,9 +264,9 @@ export default function FinanceView({
       </div>
 
       <section className="summary-grid" aria-label="Resumo mensal">
-        <article className="summary-card income-card"><div className="summary-top"><span>Entradas</span><span className="summary-icon income-icon"><Icon name="arrowDown" size={16} /></span></div><strong>{formatMoney(income)}</strong><small>{monthTransactions.filter((item) => item.type === "income").length} lançamentos no mês</small></article>
-        <article className="summary-card expense-card"><div className="summary-top"><span>Saídas</span><span className="summary-icon expense-icon"><Icon name="arrowUp" size={16} /></span></div><strong>{formatMoney(expenses)}</strong><small>{monthTransactions.filter((item) => item.type === "expense").length} lançamentos no mês</small></article>
-        <article className="summary-card balance-card"><div className="summary-top"><span>Saldo do mês</span><span className="summary-icon balance-icon"><Icon name="layers" size={16} /></span></div><strong className={balance < 0 ? "negative-value" : ""}>{formatMoney(balance)}</strong><small>{balance >= 0 ? "Entradas menos saídas" : "As saídas passaram das entradas"}</small></article>
+        <article className="summary-card income-card"><div className="summary-top"><span>Entradas</span><span className="summary-icon income-icon"><Icon name="arrowDown" size={16} /></span></div><strong>{formatMoney(income)}</strong><small>{monthDeposits.length} depósitos · {incomeTransactions.length} outras entradas</small></article>
+        <article className="summary-card expense-card"><div className="summary-top"><span>Saídas pagas e lançadas</span><span className="summary-icon expense-icon"><Icon name="arrowUp" size={16} /></span></div><strong>{formatMoney(expenses)}</strong><small>{expenseTransactions.length} lançamentos · {billPaymentsThisMonth.length + debtPaymentsThisMonth.length} contas/parcelas</small></article>
+        <article className="summary-card balance-card"><div className="summary-top"><span>Saldo do mês</span><span className="summary-icon balance-icon"><Icon name="layers" size={16} /></span></div><strong className={balance < 0 ? "negative-value" : ""}>{formatMoney(balance)}</strong><small>{balance >= 0 ? "Entradas menos saídas registradas" : "As saídas passaram das entradas"}</small></article>
       </section>
 
       <section className="charts-grid">
@@ -270,7 +303,7 @@ export default function FinanceView({
           {recentTransactions.length ? <div className="recent-list">{recentTransactions.map((item) => <div className="recent-row" key={item.id}><span className={item.type === "income" ? "recent-icon recent-income" : "recent-icon recent-expense"}><Icon name={item.type === "income" ? "arrowUp" : "arrowDown"} size={15} /></span><div className="recent-description"><strong>{item.description}</strong><span>{item.category} · {formatDay(item.date)} · {item.createdBy.split(" ")[0]}</span></div><strong className={item.type === "income" ? "amount-income" : "amount-expense"}>{item.type === "income" ? "+" : "−"}{formatMoney(item.amount)}</strong></div>)}</div> : <div className="activity-empty"><span className="activity-empty-icon"><Icon name="wallet" size={18} /></span><span>Ainda não há lançamentos.<br />Tudo começa com um pequeno registro.</span></div>}
         </article>
       </section>
-      <div className="data-note"><span className="status-dot" /> Os dados ficam salvos neste navegador. Usem o backup para levar as informações a outro aparelho.</div>
+      <div className="data-note"><span className="status-dot" /> Os dados compartilhados sincronizam pelo Firebase. Registrem salários em Planejamento e evitem duplicar contas ou parcelas no lançamento manual; o backup exclui a área privada.</div>
       <button className="mobile-add-button" onClick={() => setShowTransaction(true)}><Icon name="plus" size={20} /> Novo lançamento</button>
 
       {showTransaction && <TransactionModal categories={data.categories} profile={profile} onClose={() => setShowTransaction(false)} onSave={saveTransaction} />}

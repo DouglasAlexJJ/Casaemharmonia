@@ -1,17 +1,21 @@
 # Casa em Harmonia
 
-Painel responsivo para Douglas Alexander e Bruna Toth acompanharem finanças da casa e a rotina doméstica. O app usa Next.js, React e TypeScript; não exige conta, senha, API key, serviço de autenticação ou banco de dados.
+Aplicação responsiva Next.js/React para finanças e rotina da casa de Douglas Alexander e Bruna Toth. Usa login Google, Firebase Authentication e Cloud Firestore para sincronizar dados entre computadores autorizados. A tela não oferece fluxo de pagamento, transferência ou investimento automático.
 
-## Rodar localmente
+A identidade visual usa azul-marinho e tons frios de azul, com uma apresentação financeira sóbria; o verde foi removido da paleta do site.
 
-Requisitos: Node.js 20+ e pnpm 11.25.0 (fixado no `package.json`). Na raiz do projeto:
+## Desenvolvimento local
+
+Requisitos: Node.js 20+ e pnpm 11.25.0 (fixado em `package.json`).
 
 ```bash
 pnpm install
+cp .env.example .env.local
+# Preencha .env.local com a configuração do app Web Firebase
 pnpm dev
 ```
 
-Abra `http://localhost:3000`. Para conferir os tipos e gerar a build de produção:
+Abra `http://localhost:3000`. Para conferir os tipos e produzir uma build:
 
 ```bash
 pnpm typecheck
@@ -19,37 +23,49 @@ pnpm build
 pnpm start
 ```
 
-## Dados e privacidade
+Consulte [`docs/firebase-setup.md`](docs/firebase-setup.md) para registrar o app Web, publicar regras restritivas, autorizar os dois UIDs e preparar o deploy. O `.env.local` fica ignorado pelo Git; nunca adicione nele uma service account.
 
-Os lançamentos financeiros, categorias, orçamentos, perfil ativo e conclusões das tarefas são salvos em `localStorage` no navegador. Os perfis Douglas e Bruna alternam a identificação dos registros nesse mesmo conjunto local. A aplicação não sincroniza automaticamente entre dispositivos ou navegadores; use **Exportar backup** e **Importar** para transferir um arquivo JSON manualmente. Trate o arquivo de backup como informação privada. A primeira configuração contém a rotina recebida e categorias financeiras editáveis, mas não inclui lançamentos ou valores de orçamento fictícios.
+## Modelo financeiro
 
-## GitHub: criar um repositório e publicar o código
+As rendas de referência para investimento são configuradas e alteradas pela área autenticada, não por constantes do código. Apenas os investimentos usam a soma dessas rendas de referência. A reserva de emergência é percentual dos depósitos reais do mês; o saldo atual e a meta são editáveis.
 
-Crie um repositório **privado** no GitHub (ou use GitHub CLI já autenticado). Ao exportar este projeto para uma pasta nova, não inclua `.git`, `node_modules` nem `.next`; mantenha `pnpm-lock.yaml` se já existir. Na pasta limpa do projeto:
+A cada mês, cada pessoa registra o valor efetivamente depositado. A estimativa de mesadas parte dos depósitos registrados, separa reserva e investimentos, desconta as contas e parcelas compartilhadas e divide o restante pelos percentuais ajustáveis (início igualitário). Contas ainda não marcadas como pagas usam o valor previsto; parcelas individuais reduzem apenas a mesada da própria pessoa. Quando um dos depósitos não foi informado, o painel sinaliza que o cálculo está incompleto. O app só calcula e registra; não movimenta dinheiro nem valida saldo bancário.
+
+## Firebase e segurança
+
+- Somente uma conta Google autenticada cujo UID tenha documento ativo em `households/casaemharmonia/members/{uid}` acessa os dados compartilhados.
+- Salários de referência, depósitos, lançamentos, orçamentos, contas, pagamentos compartilhados e tarefas sincronizam em `households/casaemharmonia/shared`.
+- Despesas e dívidas individuais ficam em `users/{uid}/private/{entryId}` e são lidas apenas pelo próprio UID membro.
+- `firestore.rules` nega acesso por padrão; os documentos de membro são criados no Firebase Console pelo titular do projeto, não pelo cliente.
+- Dados permanecem no projeto Firebase até serem apagados pela aplicação ou pelo proprietário do projeto. Os backups JSON contêm somente os dados compartilhados; a importação de depósitos restaura apenas os que pertencem ao UID autenticado, e o outro membro deve restaurar os seus. Trate o arquivo como informação financeira privada.
+- O endereço do site e a tela de login podem ser acessíveis publicamente na Vercel. A autenticação e as regras protegem os dados; para restringir também a própria página, configure Vercel Deployment Protection após criar o projeto.
+- A configuração Firebase Web (API key, auth domain, project ID e app ID) é de cliente e aparece no JavaScript do navegador por desenho. Ela não substitui regras de acesso. Não versionamos `.env.local` nem credenciais administrativas.
+
+## Repositório GitHub
+
+O repositório solicitado é `https://github.com/DouglasAlexJJ/Casaemharmonia`. Para novos commits, configure a autoria **localmente neste repositório**:
 
 ```bash
-git init -b main
 git config user.name "Douglas Alexander"
 git config user.email "douglasalexjj@outlook.com.br"
-git add -A
-git commit -m "feat: inicializa painel da casa"
-gh repo create duobruna-casa-financas --private --source=. --remote=origin --push
 ```
 
-`gh repo create` requer o GitHub CLI instalado e autenticado anteriormente (`gh auth login`) ou a criação manual do repositório privado no GitHub. Se criado manualmente, associe o endereço mostrado pelo GitHub e envie:
+A partir deste workspace, se o remoto `github` ainda não existir:
 
 ```bash
-git remote add origin https://github.com/SEU_USUARIO/duobruna-casa-financas.git
-git push -u origin main
+git remote add github https://github.com/DouglasAlexJJ/Casaemharmonia.git
+git fetch github
+git push -u github main
 ```
 
-O email acima fica na configuração **local do repositório**; assim os commits do Douglas têm a autoria solicitada sem alterar a configuração Git global da máquina.
+Em um clone feito diretamente do repositório, `origin` já aponta para o GitHub; use `git push -u origin main`. O email não altera a configuração Git global. Não envie `.env.local`, `node_modules` nem `.next`.
 
-## Vercel: integração contínua
+## Deploy na Vercel (após o push)
 
-1. Entre na Vercel e escolha **Add New → Project → Import Git Repository**.
-2. Conecte o GitHub, selecione `duobruna-casa-financas` e importe o projeto.
-3. Confirme o preset **Next.js** e mantenha os comandos padrão de instalação/build. O deploy deve usar `pnpm install` e `pnpm build`; a Vercel detecta o diretório de saída Next.js automaticamente.
-4. Selecione **Deploy**. Cada push em `main` gera um deploy de produção; branches e pull requests podem gerar previews.
+1. Na Vercel, escolha **Add New → Project → Import Git Repository** e selecione `DouglasAlexJJ/Casaemharmonia`.
+2. Mantenha o preset **Next.js** e os comandos padrão de instalação/build. A Vercel detecta o `pnpm-lock.yaml` e executa a build.
+3. Em **Settings → Environment Variables**, cadastre as variáveis `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID` e, se fornecida, `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`. Use os valores do app Web no Firebase Console e aplique-os a Production e Preview.
+4. Faça o primeiro deploy e adicione o domínio Vercel em **Firebase Authentication → Settings → Authorized domains**; depois faça redeploy.
+5. Cada push em `main` gera novo deploy de produção. Ative Vercel Deployment Protection se também quiser esconder a própria página de visitantes.
 
-Nenhuma variável de ambiente é necessária nesta versão.
+O projeto Vercel não é criado automaticamente por este repositório; a importação e a política de acesso do site ficam sob controle do casal.

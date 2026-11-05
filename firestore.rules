@@ -1,0 +1,100 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isHouseholdMember(householdId) {
+      return householdId == 'casaemharmonia'
+        && signedIn()
+        && exists(/databases/$(database)/documents/households/$(householdId)/members/$(request.auth.uid))
+        && get(/databases/$(database)/documents/households/$(householdId)/members/$(request.auth.uid)).data.active == true;
+    }
+
+    function validSharedType(data) {
+      return data.type in [
+        'settings',
+        'transaction',
+        'bill',
+        'billPayment',
+        'sharedDebt',
+        'debtPayment',
+        'deposit',
+        'taskCompletions'
+      ];
+    }
+
+    function validSettings(data) {
+      return data.type != 'settings' || (
+        data.financialSettings.baseSalaries['Douglas Alexander'] is number
+        && data.financialSettings.baseSalaries['Douglas Alexander'] >= 0
+        && data.financialSettings.baseSalaries['Bruna Toth'] is number
+        && data.financialSettings.baseSalaries['Bruna Toth'] >= 0
+        && data.financialSettings.reservePercent is number
+        && data.financialSettings.reservePercent >= 0
+        && data.financialSettings.reservePercent <= 100
+        && data.financialSettings.investmentPercent is number
+        && data.financialSettings.investmentPercent >= 0
+        && data.financialSettings.investmentPercent <= 100
+        && data.financialSettings.reserveBalance is number
+        && data.financialSettings.reserveBalance >= 0
+        && data.financialSettings.reserveGoal is number
+        && data.financialSettings.reserveGoal >= 0
+        && data.financialSettings.allowancePercentages['Douglas Alexander'] is number
+        && data.financialSettings.allowancePercentages['Douglas Alexander'] >= 0
+        && data.financialSettings.allowancePercentages['Douglas Alexander'] <= 100
+        && data.financialSettings.allowancePercentages['Bruna Toth'] is number
+        && data.financialSettings.allowancePercentages['Bruna Toth'] >= 0
+        && data.financialSettings.allowancePercentages['Bruna Toth'] <= 100
+        && data.financialSettings.allowancePercentages['Douglas Alexander']
+          + data.financialSettings.allowancePercentages['Bruna Toth'] == 100
+      );
+    }
+
+    function depositMatchesMember(data, householdId) {
+      return data.uid == request.auth.uid
+        && data.profile == get(/databases/$(database)/documents/households/$(householdId)/members/$(request.auth.uid)).data.profile;
+    }
+
+    match /households/{householdId}/members/{memberUid} {
+      // O app só usa esta casa; a pessoa pode consultar o próprio documento para verificar autorização.
+      allow get: if householdId == 'casaemharmonia'
+        && signedIn()
+        && (request.auth.uid == memberUid || isHouseholdMember(householdId));
+      allow list: if isHouseholdMember(householdId);
+      // A associação é provisionada pelo proprietário no Firebase Console, nunca pelo cliente público.
+      allow create, update, delete: if false;
+    }
+
+    match /households/{householdId}/shared/{documentId} {
+      allow read: if isHouseholdMember(householdId);
+
+      allow create: if isHouseholdMember(householdId)
+        && validSharedType(request.resource.data)
+        && validSettings(request.resource.data)
+        && (request.resource.data.type != 'deposit' || depositMatchesMember(request.resource.data, householdId));
+
+      allow update: if isHouseholdMember(householdId)
+        && validSharedType(request.resource.data)
+        && request.resource.data.type == resource.data.type
+        && validSettings(request.resource.data)
+        && (resource.data.type != 'deposit' || depositMatchesMember(request.resource.data, householdId));
+
+      allow delete: if isHouseholdMember(householdId)
+        && (resource.data.type != 'deposit' || depositMatchesMember(resource.data, householdId));
+    }
+
+    match /users/{userId}/private/{entryId} {
+      allow read, write: if signedIn()
+        && request.auth.uid == userId
+        && isHouseholdMember('casaemharmonia');
+    }
+
+    // Qualquer documento fora dos caminhos explicitamente permitidos fica inacessível.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

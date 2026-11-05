@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 type IconName =
   | "home" | "wallet" | "check" | "plus" | "trend" | "arrowUp" | "arrowDown"
   | "spark" | "chevronLeft" | "chevronRight" | "calendar" | "download" | "upload"
-  | "clock" | "heart" | "filter" | "target" | "close" | "layers" | "leaf";
+  | "clock" | "heart" | "filter" | "target" | "close" | "layers" | "leaf"
+  | "lock" | "user" | "shield" | "info" | "copy";
 
 const shapes: Record<IconName, ReactNode> = {
   home: <><path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9M9 20v-7h6v7"/></>,
@@ -26,6 +27,11 @@ const shapes: Record<IconName, ReactNode> = {
   close: <><path d="m6 6 12 12M18 6 6 18"/></>,
   layers: <><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></>,
   leaf: <><path d="M20 4c-8 0-14 3-14 10a6 6 0 0 0 6 6c7 0 10-6 8-16Z"/><path d="M5 21c3-5 6-8 11-11"/></>,
+  lock: <><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></>,
+  user: <><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></>,
+  shield: <><path d="M12 3 20 6v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-3Z"/><path d="m9 12 2 2 4-4"/></>,
+  info: <><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></>,
+  copy: <><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></>,
 };
 
 export default function Icon({
