@@ -60,7 +60,12 @@ function friendlyError(error: unknown) {
   if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return "A janela de login foi fechada antes da conclusão.";
   if (code === "auth/unauthorized-domain") return "Este domínio ainda não foi liberado em Firebase Authentication → Authorized domains.";
   if (code === "auth/popup-blocked") return "O navegador bloqueou o login. Permita a janela de autenticação ou tente novamente.";
-  return "Não foi possível concluir agora. Verifique a configuração do Firebase e tente novamente.";
+  if (code === "auth/web-storage-unsupported" || code === "auth/operation-not-supported-in-this-environment") return "Este navegador não concluiu o armazenamento da sessão Google. Abra o site diretamente no Safari ou Chrome, fora de outro aplicativo.";
+  if (code === "auth/operation-not-allowed") return "O login Google não está habilitado neste projeto Firebase.";
+  if (code === "auth/network-request-failed") return "A conexão caiu durante o login Google. Verifique a internet e tente novamente.";
+  return code
+    ? `Não foi possível concluir agora (código Firebase: ${code}).`
+    : "Não foi possível concluir agora. Verifique a configuração do Firebase e tente novamente.";
 }
 
 function monthAsDate(month: string) {
@@ -135,7 +140,7 @@ export default function HouseholdApp() {
         }
         setUser(nextUser);
         setAuthLoading(false);
-        setAccessError("");
+        if (nextUser) setAccessError("");
         if (!nextUser) {
           setMember(null);
           setPrivateEntries([]);
@@ -234,6 +239,7 @@ export default function HouseholdApp() {
   async function logout() {
     const services = getFirebaseServices();
     if (!services) return;
+    setAccessError("");
     try {
       await signOut(services.auth);
       setSection("finance");

@@ -56,6 +56,7 @@
 - Usar Firebase Authentication com Google e Cloud Firestore no projeto informado pelo usuário, com acesso aos mesmos dados compartilhados de diferentes computadores.
 - Sincronizar dados comuns da casa somente para UIDs autenticados cadastrados como membros autorizados.
 - Guardar dívidas/despesas privadas em caminhos individuais e impor em Firestore Rules que somente o UID proprietário possa ler ou alterar esses dados.
+- Se o login Google via popup ou redirecionamento falhar sem autenticar a conta, manter a mensagem de erro visível na tela de entrada; para códigos não mapeados, exibir o código Firebase sem expor tokens ou dados sensíveis.
 - Substituir a regra temporária que permite leitura e escrita públicas por regras sem acesso anônimo e com negação por padrão.
 - Fornecer o arquivo de regras e instruções claras para publicar as regras, registrar o app Web, preencher variáveis de ambiente e cadastrar os dois UIDs no Firestore Console.
 - O código, `firestore.rules` e o guia de configuração estão preparados; publicar as regras no Firebase e cadastrar os dois UIDs ainda dependem do titular do projeto.
