@@ -66,6 +66,16 @@
 - Usar o email de autoria Git `douglasalexjj@outlook.com.br`.
 - Deixar instruções para configurar as variáveis do Firebase e importar o repositório na Vercel; não criar o projeto Vercel, pois o usuário fará essa etapa após o push.
 
+## [x] 14. Configurações financeiras, lançamentos recebidos e conferência da reserva
+- A área atualmente apresentada como Planejamento deve ser apresentada como **Configurações** e reunir os salários brutos de Douglas e Bruna e os percentuais configuráveis para reserva de emergência e investimentos.
+- Com base no salário bruto e nos percentuais configurados, calcular quanto se recomenda guardar para a reserva de emergência e quanto se destina a investimentos.
+- A recomendação da reserva de emergência não pode ser descontada do valor do salário nem do valor disponível; deve permanecer como sugestão separada.
+- A área **Entrada real** deve funcionar como lançador dos pagamentos recebidos, permitir vários lançamentos e apresentar o histórico de lançamentos.
+- Permitir editar e excluir lançamentos de pagamentos já realizados; cada perfil só pode alterar seus próprios lançamentos.
+- O saldo da reserva deve ser formado pelos aportes efetivamente lançados, sem substituir o valor recomendado por aportes fictícios.
+- Ao lançar um aporte à reserva, solicitar o valor depositado e o saldo atual da reserva informado pelo banco.
+- No fechamento de cada mês, apresentar comparativo entre o total efetivamente depositado na reserva e o saldo informado pelo banco, mostrando a diferença (incluindo juros/rendimentos).
+
 ## [x] 12. Paleta azul-marinho
 - Remover o verde da identidade visual do site e aplicar azul-marinho/azuis frios em estilo financeiro, preservando tons neutros e cores semânticas de alerta.
 - Atualizar os símbolos de marca exibidos pelo site para corresponder à paleta azul-marinho.

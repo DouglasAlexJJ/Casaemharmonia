@@ -109,7 +109,7 @@ function TransactionModal({
             <button type="button" className={type === "expense" ? "segment active expense" : "segment"} onClick={() => setType("expense")}><Icon name="arrowDown" size={16} /> Despesa</button>
             <button type="button" className={type === "income" ? "segment active income" : "segment"} onClick={() => setType("income")}><Icon name="arrowUp" size={16} /> Receita</button>
           </div>
-          {type === "income" && <p className="form-note">Depósitos mensais são registrados em Planejamento, para não contar o mesmo salário duas vezes.</p>}
+          {type === "income" && <p className="form-note">Pagamentos recebidos são registrados em Configurações, com histórico por pessoa e competência.</p>}
           <label className="field-label">Descrição
             <input autoFocus required value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Ex.: mercado da semana" />
           </label>
@@ -303,7 +303,7 @@ export default function FinanceView({
           {recentTransactions.length ? <div className="recent-list">{recentTransactions.map((item) => <div className="recent-row" key={item.id}><span className={item.type === "income" ? "recent-icon recent-income" : "recent-icon recent-expense"}><Icon name={item.type === "income" ? "arrowUp" : "arrowDown"} size={15} /></span><div className="recent-description"><strong>{item.description}</strong><span>{item.category} · {formatDay(item.date)} · {item.createdBy.split(" ")[0]}</span></div><strong className={item.type === "income" ? "amount-income" : "amount-expense"}>{item.type === "income" ? "+" : "−"}{formatMoney(item.amount)}</strong></div>)}</div> : <div className="activity-empty"><span className="activity-empty-icon"><Icon name="wallet" size={18} /></span><span>Ainda não há lançamentos.<br />Tudo começa com um pequeno registro.</span></div>}
         </article>
       </section>
-      <div className="data-note"><span className="status-dot" /> Os dados compartilhados sincronizam pelo Firebase. Registrem salários em Planejamento e evitem duplicar contas ou parcelas no lançamento manual; o backup exclui a área privada.</div>
+      <div className="data-note"><span className="status-dot" /> Os dados compartilhados sincronizam pelo Firebase. Registrem salários brutos e pagamentos recebidos em Configurações e evitem duplicar contas ou parcelas no lançamento manual; o backup exclui a área privada.</div>
       <button className="mobile-add-button" onClick={() => setShowTransaction(true)}><Icon name="plus" size={20} /> Novo lançamento</button>
 
       {showTransaction && <TransactionModal categories={data.categories} profile={profile} onClose={() => setShowTransaction(false)} onSave={saveTransaction} />}

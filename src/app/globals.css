@@ -724,3 +724,30 @@ button:disabled { opacity: .48; cursor: not-allowed; }
 @media (max-width: 600px) {
   .mobile-brand-title { max-width: 190px; font-size: 10px; }
 }
+
+
+/* Lançamentos de pagamentos e conferência mensal da reserva */
+.reserve-entry-form { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 13px 0; padding: 12px; }
+.reserve-entry-form input[type="date"] { min-width: 0; min-height: 36px; padding: 0 8px; border: 1px solid #e4e6ea; border-radius: 6px; color: #55635a; background: #fff; font-size: 10px; }
+.reserve-history { display: grid; gap: 8px; margin-top: 13px; padding-top: 11px; border-top: 1px solid #ebedf0; }
+.reserve-history > strong { color: #515b6b; font-size: 10px; }
+.reserve-history > small { color: #929b93; font-size: 9px; }
+.reserve-history-row { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; padding: 8px 0; border-top: 1px solid #f0f1f3; color: #78838a; font-size: 9px; }
+.reserve-history-row > strong { color: #3d4659; font-size: 10px; }
+.reserve-history-row > small { color: #909a92; font-size: 8px; }
+.reserve-history-row .bill-row-actions { margin-left: auto; }
+.reserve-suggestion { margin-top: 13px; padding: 13px; border: 1px solid #e7e9ee; border-radius: 9px; background: #f5f7fa; }
+.reserve-suggestion > div { display: grid; gap: 4px; }
+.reserve-suggestion .eyebrow { margin: 0; }
+.reserve-suggestion strong { color: #344059; font-size: 19px; }
+.reserve-suggestion > div > span { color: #87938a; font-size: 9px; line-height: 1.45; }
+.reserve-closing-summary { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 7px 12px; margin-top: 14px; padding: 12px; border-radius: 8px; background: #f7f8fa; }
+.reserve-closing-summary > span { color: #87918d; font-size: 9px; line-height: 1.4; }
+.reserve-closing-summary > strong { color: #344059; font-size: 10px; text-align: right; }
+.money-input output { display: block; min-width: 0; padding: 8px 9px; color: #344059; font-size: 11px; font-weight: 600; }
+@media (max-width: 680px) {
+  .reserve-entry-form { grid-template-columns: minmax(0, 1fr); }
+  .reserve-history-row { gap: 6px; }
+  .reserve-closing-summary { grid-template-columns: 1fr; }
+  .reserve-closing-summary > strong { text-align: left; }
+}

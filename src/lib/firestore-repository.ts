@@ -21,6 +21,7 @@ import {
   MonthlyDeposit,
   PrivateEntry,
   Profile,
+  ReserveContribution,
   RecurringBill,
   SharedDebt,
   Transaction,
@@ -101,6 +102,7 @@ export function subscribeHouseholdData(
     const debtPayments = withoutDocId<DebtPayment>(docs.filter((item) => item.type === "debtPayment"));
     const deposits = uniqueMonthlyDeposits(docs.filter((item) => item.type === "deposit")
       .map(({ docId, ...item }) => ({ ...item, id: docId }) as MonthlyDeposit));
+    const reserveContributions = withoutDocId<ReserveContribution>(docs.filter((item) => item.type === "reserveContribution"));
     const completions: HouseholdData["completions"] = {};
     for (const item of docs.filter((docValue) => docValue.type === "taskCompletions")) {
       const items = item.items && typeof item.items === "object" ? item.items as Record<string, CompletionRecord> : {};
@@ -114,6 +116,7 @@ export function subscribeHouseholdData(
       sharedDebts,
       debtPayments,
       deposits,
+      reserveContributions,
       completions,
       categories: Array.isArray(config?.categories) ? config.categories as string[] : defaults.categories,
       budgets: config?.budgets && typeof config.budgets === "object" ? config.budgets as Record<string, number> : {},
@@ -217,7 +220,33 @@ export async function saveDebtPayment(payment: DebtPayment): Promise<void> {
 }
 
 export async function saveMonthlyDeposit(deposit: MonthlyDeposit): Promise<void> {
+  const services = getFirebaseServices();
+  if (!services?.auth.currentUser || services.auth.currentUser.uid !== deposit.uid) {
+    throw new Error("Cada perfil só pode registrar ou editar os próprios pagamentos recebidos.");
+  }
   await setDoc(sharedRef(depositDocumentId(deposit)), { ...deposit, type: "deposit" });
+}
+
+export async function deleteMonthlyDeposit(id: string, uid: string): Promise<void> {
+  const services = getFirebaseServices();
+  if (!services?.auth.currentUser || services.auth.currentUser.uid !== uid) {
+    throw new Error("Cada perfil só pode excluir os próprios pagamentos recebidos.");
+  }
+  const ref = sharedRef(id.startsWith("deposit_") ? id : `deposit_${id}`);
+  await runTransaction(getDb(), async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    if (!snapshot.exists()) return;
+    if (snapshot.data().uid !== uid) throw new Error("Não é permitido excluir o pagamento de outro perfil.");
+    transaction.delete(ref);
+  });
+}
+
+export async function saveReserveContribution(contribution: ReserveContribution): Promise<void> {
+  await setDoc(sharedRef(`reserveContribution_${contribution.id}`), { ...contribution, type: "reserveContribution" });
+}
+
+export async function deleteReserveContribution(id: string): Promise<void> {
+  await deleteDoc(sharedRef(`reserveContribution_${id}`));
 }
 
 export async function toggleTaskCompletion(key: string, profile: Profile, uid: string): Promise<void> {
@@ -271,6 +300,7 @@ export async function importSharedBackup(data: HouseholdData, uid: string): Prom
     ...data.sharedDebts.map((item) => ({ id: `sharedDebt_${item.id}`, value: { ...item, type: "sharedDebt" } })),
     ...data.debtPayments.map((item) => ({ id: `debtPayment_${item.id}`, value: { ...item, type: "debtPayment" } })),
     ...ownDeposits.map((item) => ({ id: depositDocumentId(item), value: { ...item, type: "deposit" } })),
+    ...data.reserveContributions.map((item) => ({ id: `reserveContribution_${item.id}`, value: { ...item, type: "reserveContribution" } })),
   ];
   const completionsByMonth = new Map<string, Record<string, CompletionRecord>>();
   for (const [key, value] of Object.entries(data.completions)) {

@@ -17,6 +17,7 @@ import {
   MonthlyDeposit,
   PrivateEntry,
   Profile,
+  ReserveContribution,
   RecurringBill,
   SharedDebt,
   Transaction,
@@ -26,7 +27,9 @@ import {
 } from "@/lib/household";
 import {
   deleteBill,
+  deleteMonthlyDeposit,
   deletePrivateEntry,
+  deleteReserveContribution,
   deleteSharedDebt,
   importSharedBackup,
   saveBill,
@@ -35,6 +38,7 @@ import {
   saveDebtPayment,
   saveHouseholdSettings,
   saveMonthlyDeposit,
+  saveReserveContribution,
   savePrivateEntry,
   savePrivateDebtPayment,
   saveSharedDebt,
@@ -263,7 +267,20 @@ export default function HouseholdApp() {
   }
 
   function updateDeposit(deposit: MonthlyDeposit) {
-    notifyWrite(saveMonthlyDeposit(deposit), "Depósito real registrado e sincronizado.");
+    notifyWrite(saveMonthlyDeposit(deposit), "Pagamento recebido registrado e sincronizado.");
+  }
+
+  function removeDeposit(id: string) {
+    if (!user) return;
+    notifyWrite(deleteMonthlyDeposit(id, user.uid), "Lançamento de pagamento removido.");
+  }
+
+  function updateReserveContribution(contribution: ReserveContribution) {
+    notifyWrite(saveReserveContribution(contribution), "Aporte e saldo bancário da reserva sincronizados.");
+  }
+
+  function removeReserveContribution(id: string) {
+    notifyWrite(deleteReserveContribution(id), "Aporte da reserva removido.");
   }
 
   function updateTask(key: string, by: Profile) {
@@ -341,7 +358,7 @@ export default function HouseholdApp() {
 
   const profile = member.profile;
   const selectedMonth = currentMonth;
-  const sectionLabel: Record<Section, string> = { finance: "Finanças", planning: "Planejamento", private: "Minha área privada", tasks: "Tarefas da casa" };
+  const sectionLabel: Record<Section, string> = { finance: "Finanças", planning: "Configurações", private: "Minha área privada", tasks: "Tarefas da casa" };
   const setPlanningMonth = (value: string) => setMonth(monthAsDate(value));
 
   return (
@@ -351,7 +368,7 @@ export default function HouseholdApp() {
         <div className="sidebar-section-label">ESPAÇO DA CASA</div>
         <nav className="side-navigation" aria-label="Navegação principal">
           <button className={section === "finance" ? "nav-item active" : "nav-item"} onClick={() => setSection("finance")}><span className="nav-icon"><Icon name="wallet" size={18} /></span><span>Finanças</span>{section === "finance" && <i className="nav-active-indicator" />}</button>
-          <button className={section === "planning" ? "nav-item active" : "nav-item"} onClick={() => setSection("planning")}><span className="nav-icon"><Icon name="target" size={18} /></span><span>Planejamento</span>{section === "planning" && <i className="nav-active-indicator" />}</button>
+          <button className={section === "planning" ? "nav-item active" : "nav-item"} onClick={() => setSection("planning")}><span className="nav-icon"><Icon name="target" size={18} /></span><span>Configurações</span>{section === "planning" && <i className="nav-active-indicator" />}</button>
           <button className={section === "private" ? "nav-item active" : "nav-item"} onClick={() => setSection("private")}><span className="nav-icon"><Icon name="lock" size={17} /></span><span>Minha área privada</span>{section === "private" && <i className="nav-active-indicator" />}</button>
           <button className={section === "tasks" ? "nav-item active" : "nav-item"} onClick={() => setSection("tasks")}><span className="nav-icon"><Icon name="check" size={19} /></span><span>Tarefas da casa</span>{section === "tasks" && <i className="nav-active-indicator" />}</button>
         </nav>
@@ -367,10 +384,10 @@ export default function HouseholdApp() {
           <div className="topbar-left"><span className="breadcrumb-home"><Icon name="home" size={14} /></span><span className="breadcrumb-separator">/</span><span>{sectionLabel[section]}</span></div>
           <div className="topbar-actions"><span className="local-status"><span className="status-dot" /> Sincronizado na nuvem</span><button className="backup-button" onClick={exportBackup} title="Baixar backup dos dados compartilhados; a área privada é excluída"><Icon name="download" size={16} /><span>Backup compartilhado</span></button><button className="backup-button import-button" onClick={() => fileInput.current?.click()} title="Mesclar backup compartilhado no Firestore"><Icon name="upload" size={16} /><span>Importar</span></button><input className="visually-hidden" ref={fileInput} type="file" accept="application/json,.json" onChange={importBackup} /><span className="top-profile-selector"><span className={`avatar tiny ${profile === "Bruna Toth" ? "avatar-bruna" : ""}`}>{profile === "Douglas Alexander" ? "D" : "B"}</span><strong>{profile.split(" ")[0]}</strong></span></div>
         </header>
-        <nav className="mobile-navigation" aria-label="Navegação principal"><button className={section === "finance" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setSection("finance")}><Icon name="wallet" size={17} />Finanças</button><button className={section === "planning" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setSection("planning")}><Icon name="target" size={17} />Plano</button><button className={section === "private" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setSection("private")}><Icon name="lock" size={16} />Privado</button><button className={section === "tasks" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setSection("tasks")}><Icon name="check" size={17} />Tarefas</button></nav>
+        <nav className="mobile-navigation" aria-label="Navegação principal"><button className={section === "finance" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setSection("finance")}><Icon name="wallet" size={17} />Finanças</button><button className={section === "planning" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setSection("planning")}><Icon name="target" size={17} />Config.</button><button className={section === "private" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setSection("private")}><Icon name="lock" size={16} />Privado</button><button className={section === "tasks" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setSection("tasks")}><Icon name="check" size={17} />Tarefas</button></nav>
         {legacyData && <div className="legacy-import-banner"><span><strong>Encontramos uma cópia antiga neste navegador.</strong> Ela só será enviada à nuvem se vocês escolherem importar; dados privados não entram no processo.</span><button className="button button-soft" disabled={legacyImportBusy} onClick={importLegacyData}>{legacyImportBusy ? "Importando…" : "Mesclar cópia antiga"}</button><button className="text-action" onClick={() => setLegacyData(null)}>Agora não</button></div>}
         {section === "finance" && <FinanceView data={data} profile={profile} month={month} onMonthChange={setMonth} onCreateTransaction={createTransaction} onSaveBudgets={updateBudgets} />}
-        {section === "planning" && <FinancePlanningView data={data} month={selectedMonth} profile={profile} uid={user.uid} onChangeMonth={setPlanningMonth} onSaveSettings={updateSettings} onSaveDeposit={updateDeposit} onSaveBill={(bill: RecurringBill) => notifyWrite(saveBill(bill), "Conta da casa sincronizada.")} onDeleteBill={(id: string) => notifyWrite(deleteBill(id), "Conta removida.")} onSaveBillPayment={(payment: BillPayment) => notifyWrite(saveBillPayment(payment), "Pagamento da conta registrado.")} onSaveDebt={(debt: SharedDebt) => notifyWrite(saveSharedDebt(debt), "Dívida compartilhada sincronizada.")} onDeleteDebt={(id: string) => notifyWrite(deleteSharedDebt(id), "Dívida removida.")} onSaveDebtPayment={(payment: DebtPayment) => notifyWrite(saveDebtPayment(payment), "Parcela compartilhada registrada.")} onGoPrivate={() => setSection("private")} />}
+        {section === "planning" && <FinancePlanningView data={data} month={selectedMonth} profile={profile} uid={user.uid} onChangeMonth={setPlanningMonth} onSaveSettings={updateSettings} onSaveDeposit={updateDeposit} onDeleteDeposit={removeDeposit} onSaveReserveContribution={updateReserveContribution} onDeleteReserveContribution={removeReserveContribution} onSaveBill={(bill: RecurringBill) => notifyWrite(saveBill(bill), "Conta da casa sincronizada.")} onDeleteBill={(id: string) => notifyWrite(deleteBill(id), "Conta removida.")} onSaveBillPayment={(payment: BillPayment) => notifyWrite(saveBillPayment(payment), "Pagamento da conta registrado.")} onSaveDebt={(debt: SharedDebt) => notifyWrite(saveSharedDebt(debt), "Dívida compartilhada sincronizada.")} onDeleteDebt={(id: string) => notifyWrite(deleteSharedDebt(id), "Dívida removida.")} onSaveDebtPayment={(payment: DebtPayment) => notifyWrite(saveDebtPayment(payment), "Parcela compartilhada registrada.")} onGoPrivate={() => setSection("private")} />}
         {section === "private" && <PrivateFinanceView data={data} entries={privateEntries} month={selectedMonth} profile={profile} onChangeMonth={setPlanningMonth} onSaveEntry={savePrivate} onDeleteEntry={(id: string) => user && notifyWrite(deletePrivateEntry(user.uid, id), "Registro removido da sua área privada.")} onSaveDebtPayment={payPrivateDebt} />}
         {section === "tasks" && <TasksView data={data} profile={profile} onToggle={updateTask} />}
       </main>

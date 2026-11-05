@@ -22,6 +22,7 @@ service cloud.firestore {
         'sharedDebt',
         'debtPayment',
         'deposit',
+        'reserveContribution',
         'taskCompletions'
       ];
     }
@@ -53,9 +54,27 @@ service cloud.firestore {
       );
     }
 
+    function validReserveContribution(data) {
+      return data.type != 'reserveContribution' || (
+        data.month is string
+        && data.amount is number
+        && data.amount > 0
+        && data.depositedOn is string
+        && data.recordedAt is string
+        && data.bankBalance is number
+        && data.bankBalance >= 0
+        && data.recordedByUid is string
+      );
+    }
+
     function depositMatchesMember(data, householdId) {
       return data.uid == request.auth.uid
         && data.profile == get(/databases/$(database)/documents/households/$(householdId)/members/$(request.auth.uid)).data.profile;
+    }
+
+    function reserveContributionMatchesMember(data, householdId) {
+      return data.recordedByUid == request.auth.uid
+        && data.recordedBy == get(/databases/$(database)/documents/households/$(householdId)/members/$(request.auth.uid)).data.profile;
     }
 
     match /households/{householdId}/members/{memberUid} {
@@ -74,16 +93,22 @@ service cloud.firestore {
       allow create: if isHouseholdMember(householdId)
         && validSharedType(request.resource.data)
         && validSettings(request.resource.data)
-        && (request.resource.data.type != 'deposit' || depositMatchesMember(request.resource.data, householdId));
+        && validReserveContribution(request.resource.data)
+        && (request.resource.data.type != 'deposit' || depositMatchesMember(request.resource.data, householdId))
+        && (request.resource.data.type != 'reserveContribution' || reserveContributionMatchesMember(request.resource.data, householdId));
 
       allow update: if isHouseholdMember(householdId)
         && validSharedType(request.resource.data)
         && request.resource.data.type == resource.data.type
         && validSettings(request.resource.data)
-        && (resource.data.type != 'deposit' || depositMatchesMember(request.resource.data, householdId));
+        && validReserveContribution(request.resource.data)
+        && (resource.data.type != 'deposit' || depositMatchesMember(request.resource.data, householdId))
+        && (resource.data.type != 'reserveContribution' || reserveContributionMatchesMember(resource.data, householdId))
+        && (resource.data.type != 'reserveContribution' || reserveContributionMatchesMember(request.resource.data, householdId));
 
       allow delete: if isHouseholdMember(householdId)
-        && (resource.data.type != 'deposit' || depositMatchesMember(resource.data, householdId));
+        && (resource.data.type != 'deposit' || depositMatchesMember(resource.data, householdId))
+        && (resource.data.type != 'reserveContribution' || reserveContributionMatchesMember(resource.data, householdId));
     }
 
     match /users/{userId}/private/{entryId} {

@@ -59,3 +59,11 @@ O usuário confirmou o ID do projeto, informou a configuração do app Web e hab
 
 - O site usa `signInWithRedirect` em telas estreitas e lê o retorno com `getRedirectResult`. Ao não haver usuário autenticado, erros do retorno não devem ser apagados pelo observador de autenticação; a tela deve preservar a mensagem e mostrar o código Firebase em falhas ainda não mapeadas.
 - Manter a configuração atual de `authDomain` e as regras/associações do Firestore inalteradas nesta correção. A verificação de domínio, navegador móvel e política de armazenamento fica separada do tratamento de erro no cliente.
+
+## Atualização solicitada — configurações, pagamentos e reserva de emergência
+
+- A área hoje chamada Planejamento passa a ser apresentada como **Configurações**, concentrando salários brutos do casal e percentuais para poupança/reserva e investimentos. As estimativas são calculadas sobre os salários brutos configurados, sem gravar valores salariais no código.
+- A área Entrada real funciona como lançador de pagamentos recebidos, com múltiplos lançamentos por pessoa e competência, histórico com edição/exclusão e escopo de edição individual do perfil autenticado.
+- A sugestão de contribuição para a reserva de emergência não é deduzida do salário nem do restante disponível para mesadas; é exibida separadamente como recomendação.
+- Depósitos efetivos da reserva são lançamentos separados e acumuláveis. Ao registrar um aporte, solicitar também o saldo atual informado pelo banco; exibir no fechamento mensal o total aportado e o saldo bancário informado, com a diferença atribuível a rendimentos/outros ajustes.
+- Persistir os lançamentos e snapshots de saldo junto aos dados compartilhados existentes no Firestore e preservar os registros legados ao ler/importar dados.

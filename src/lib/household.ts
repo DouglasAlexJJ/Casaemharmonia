@@ -83,6 +83,17 @@ export type MonthlyDeposit = {
   receivedOn: string;
 };
 
+export type ReserveContribution = {
+  id: string;
+  month: string;
+  amount: number;
+  depositedOn: string;
+  recordedAt: string;
+  bankBalance: number;
+  recordedBy: Profile;
+  recordedByUid: string;
+};
+
 export type HouseholdData = {
   version: 2;
   transactions: Transaction[];
@@ -95,25 +106,16 @@ export type HouseholdData = {
   sharedDebts: SharedDebt[];
   debtPayments: DebtPayment[];
   deposits: MonthlyDeposit[];
+  reserveContributions: ReserveContribution[];
 };
 
-export function depositDocumentId(deposit: Pick<MonthlyDeposit, "month" | "profile">): string {
-  const profileKey = deposit.profile === "Douglas Alexander" ? "douglas" : "bruna";
-  return `deposit_${deposit.month}_${profileKey}`;
+export function depositDocumentId(deposit: Pick<MonthlyDeposit, "id">): string {
+  return deposit.id.startsWith("deposit_") ? deposit.id : `deposit_${deposit.id}`;
 }
 
 export function uniqueMonthlyDeposits(deposits: MonthlyDeposit[]): MonthlyDeposit[] {
   const unique = new Map<string, MonthlyDeposit>();
-  for (const deposit of deposits) {
-    const key = `${deposit.month}:${deposit.uid}:${deposit.profile}`;
-    const previous = unique.get(key);
-    const depositIsCanonical = deposit.id === depositDocumentId(deposit);
-    const previousIsCanonical = previous ? previous.id === depositDocumentId(previous) : false;
-    if (!previous || (depositIsCanonical && !previousIsCanonical)
-      || (depositIsCanonical === previousIsCanonical && deposit.receivedOn.localeCompare(previous.receivedOn) >= 0)) {
-      unique.set(key, deposit);
-    }
-  }
+  for (const deposit of deposits) unique.set(deposit.id || `${deposit.month}:${deposit.uid}:${deposit.receivedOn}:${deposit.amount}`, deposit);
   return [...unique.values()];
 }
 
@@ -231,6 +233,7 @@ export function createInitialData(): HouseholdData {
     sharedDebts: [],
     debtPayments: [],
     deposits: [],
+    reserveContributions: [],
   };
 }
 
@@ -329,7 +332,7 @@ export function calculateMonthlyPlan(data: HouseholdData, month: string): Monthl
   const actualDeposits = monthDeposits.reduce((sum, deposit) => sum + deposit.amount, 0);
   const missingDeposits = PROFILES.filter((profile) => !monthDeposits.some((deposit) => deposit.profile === profile));
   const baseSalaryTotal = PROFILES.reduce((sum, profile) => sum + settings.baseSalaries[profile], 0);
-  const reserveContribution = actualDeposits * settings.reservePercent / 100;
+  const reserveContribution = baseSalaryTotal * settings.reservePercent / 100;
   const investmentContribution = baseSalaryTotal * settings.investmentPercent / 100;
   const billForecast = data.bills.reduce((sum, bill) => {
     const payment = data.billPayments.find((item) => item.billId === bill.id && item.month === month);
@@ -341,7 +344,7 @@ export function calculateMonthlyPlan(data: HouseholdData, month: string): Monthl
     return sum + (payment?.amount ?? estimatedPayment);
   }, 0);
   const plannedBillsAndDebts = billForecast + debtForecast;
-  const remaining = actualDeposits - reserveContribution - investmentContribution - plannedBillsAndDebts;
+  const remaining = actualDeposits - investmentContribution - plannedBillsAndDebts;
   const available = Math.max(0, remaining);
   const allowances = {
     "Douglas Alexander": available * settings.allowancePercentages["Douglas Alexander"] / 100,
@@ -388,6 +391,7 @@ export function safeImportedData(value: unknown): HouseholdData | null {
     sharedDebts: Array.isArray(candidate.sharedDebts) ? candidate.sharedDebts : [],
     debtPayments: Array.isArray(candidate.debtPayments) ? candidate.debtPayments : [],
     deposits: uniqueMonthlyDeposits(Array.isArray(candidate.deposits) ? candidate.deposits as MonthlyDeposit[] : []),
+    reserveContributions: Array.isArray(candidate.reserveContributions) ? candidate.reserveContributions as ReserveContribution[] : [],
     transactions: candidate.transactions as Transaction[],
   };
 }
