@@ -98,3 +98,11 @@
 - Permitir editar diretamente no extrato os valores e datas; nos lançamentos avulsos, também a descrição e categoria; nos aportes da reserva, o saldo bancário informado.
 - Permitir excluir diretamente no extrato cada lançamento autorizado, com atualização dos totais do mês.
 - Ao remover uma dívida compartilhada, remover também parcelas vinculadas para que lançamentos órfãos não continuem somando como débito; ignorar parcelas órfãs em totais já existentes.
+
+
+## [x] 17. Gestão e agendamento configurável das tarefas da casa
+- Permitir adicionar, editar e excluir tarefas compartilhadas, incluindo título e observações.
+- Configurar responsável por tarefa: Douglas, Bruna, ambos ou alternância; na alternância, escolher a data inicial e quem começa.
+- Configurar repetição mensal ou semanal nos dias da semana selecionados; permitir selecionar todos ou apenas alguns dias.
+- Definir período manhã/tarde/noite/livre e horário opcional; ordenar as tarefas pela programação e deixar as tarefas sem horário definido no grupo Livre.
+- Definir datas de início e término opcionais; sem término a tarefa permanece recorrente. Sincronizar as definições e incluí-las em backup/restore compartilhado.

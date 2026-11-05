@@ -6,7 +6,9 @@ export type TaskFrequency =
   | "dishAlternate"
   | "cleaning"
   | "monthly"
-  | "couple";
+  | "couple"
+  | "custom";
+export type TaskTimePeriod = "morning" | "afternoon" | "night" | "free";
 export type CompletionRecord = { by: Profile; uid: string; completedAt: string };
 
 export type Transaction = {
@@ -27,6 +29,12 @@ export type TaskDefinition = {
   owner: Profile | "both" | "rotation";
   detail?: string;
   time?: string;
+  timePeriod?: TaskTimePeriod;
+  daysOfWeek?: number[];
+  startDate?: string;
+  endDate?: string;
+  rotationStartDate?: string;
+  rotationFirstPerson?: Profile;
   priority?: boolean;
 };
 
@@ -100,6 +108,7 @@ export type HouseholdData = {
   categories: string[];
   budgets: Record<string, number>;
   completions: Record<string, CompletionRecord>;
+  taskDefinitions: TaskDefinition[];
   financialSettings: FinancialSettings;
   bills: RecurringBill[];
   billPayments: BillPayment[];
@@ -227,6 +236,7 @@ export function createInitialData(): HouseholdData {
     categories: [...DEFAULT_CATEGORIES],
     budgets: {},
     completions: {},
+    taskDefinitions: [...ROUTINE_TASKS],
     financialSettings: { ...DEFAULT_FINANCIAL_SETTINGS },
     bills: [],
     billPayments: [],
@@ -261,6 +271,25 @@ export function getIsoWeekNumber(date: Date): number {
 export function getTaskAssignee(task: TaskDefinition, date: Date): Profile | "Ambos" {
   if (task.owner === "both") return "Ambos";
   if (task.owner !== "rotation") return task.owner;
+
+  if (task.frequency === "custom" || (task.frequency === "monthly" && task.rotationStartDate)) {
+    const anchorKey = task.rotationStartDate || task.startDate || localDateKey(date);
+    const anchor = new Date(`${anchorKey}T12:00:00`);
+    const target = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
+    if (target < anchor) return task.rotationFirstPerson ?? "Douglas Alexander";
+    if (task.frequency === "monthly") {
+      const occurrences = (target.getFullYear() - anchor.getFullYear()) * 12 + target.getMonth() - anchor.getMonth() + 1;
+      const first = task.rotationFirstPerson ?? "Douglas Alexander";
+      return occurrences % 2 === 1 ? first : first === "Douglas Alexander" ? "Bruna Toth" : "Douglas Alexander";
+    }
+    const days = task.daysOfWeek?.length ? task.daysOfWeek : [0, 1, 2, 3, 4, 5, 6];
+    let occurrences = 0;
+    for (const cursor = new Date(anchor); cursor <= target; cursor.setDate(cursor.getDate() + 1)) {
+      if (days.includes(cursor.getDay())) occurrences++;
+    }
+    const first = task.rotationFirstPerson ?? "Douglas Alexander";
+    return occurrences % 2 === 1 ? first : first === "Douglas Alexander" ? "Bruna Toth" : "Douglas Alexander";
+  }
 
   if (task.frequency === "dishAlternate") {
     const anchor = Date.UTC(2026, 10, 4);
@@ -303,22 +332,58 @@ export const ROUTINE_TASKS: TaskDefinition[] = [
   { id: "couple-time", title: "Encontro / Tempo do Casal", frequency: "couple", owner: "both", detail: "Sábado às 20:00", time: "20:00", priority: true },
 ];
 
-export function getTasksForDate(date: Date): TaskDefinition[] {
+export function taskPeriod(task: TaskDefinition): TaskTimePeriod {
+  if (task.timePeriod) return task.timePeriod;
+  const legacy = task.time?.toLocaleLowerCase() ?? "";
+  if (legacy.includes("manhã")) return "morning";
+  if (legacy.includes("tarde")) return "afternoon";
+  if (legacy.includes("noite") || task.frequency === "alternate" || task.frequency === "dishAlternate") return "night";
+  if (task.time && /^\d{1,2}:\d{2}$/.test(task.time)) return "night";
+  return "free";
+}
+
+export function taskScheduleLabel(task: TaskDefinition): string | null {
+  const period: Record<TaskTimePeriod, string> = { morning: "Manhã", afternoon: "Tarde", night: "Noite", free: "Livre" };
+  const exact = task.time && /^\d{1,2}:\d{2}$/.test(task.time) ? task.time : null;
+  if (task.timePeriod === "free" || taskPeriod(task) === "free") return "Livre";
+  return exact ? `${period[taskPeriod(task)]} · ${exact}` : period[taskPeriod(task)];
+}
+
+function withinTaskDates(task: TaskDefinition, date: Date): boolean {
+  const key = localDateKey(date);
+  return (!task.startDate || key >= task.startDate) && (!task.endDate || key <= task.endDate);
+}
+
+function sortBySchedule(tasks: TaskDefinition[]): TaskDefinition[] {
+  const rank: Record<TaskTimePeriod, number> = { morning: 0, afternoon: 1, night: 2, free: 3 };
+  return [...tasks].sort((a, b) => rank[taskPeriod(a)] - rank[taskPeriod(b)]
+    || (a.time ?? "").localeCompare(b.time ?? "")
+    || a.title.localeCompare(b.title, "pt-BR"));
+}
+
+export function getTasksForDate(date: Date, definitions: TaskDefinition[] = ROUTINE_TASKS): TaskDefinition[] {
   const weekday = date.getDay();
-  return ROUTINE_TASKS.filter((task) => {
+  return sortBySchedule(definitions.filter((task) => {
+    if (!withinTaskDates(task, date)) return false;
+    if (task.frequency === "custom") return (task.daysOfWeek?.length ? task.daysOfWeek : [0, 1, 2, 3, 4, 5, 6]).includes(weekday);
     if (task.frequency === "daily" || task.frequency === "alternate" || task.frequency === "dishAlternate") return true;
     if (task.frequency === "cleaning") return weekday === 3 || weekday === 5;
     if (task.frequency === "couple") return weekday === 6;
     return false;
-  });
+  }));
 }
 
-export function getTasksForRoutine(): TaskDefinition[] {
-  return ROUTINE_TASKS.filter((task) => ["daily", "alternate", "dishAlternate", "cleaning"].includes(task.frequency));
+export function getTasksForRoutine(definitions: TaskDefinition[] = ROUTINE_TASKS, date = new Date()): TaskDefinition[] {
+  return sortBySchedule(definitions.filter((task) => withinTaskDates(task, date)
+    && ["daily", "alternate", "dishAlternate", "cleaning", "custom"].includes(task.frequency)));
 }
 
-export function getTasksForMonth(): TaskDefinition[] {
-  return ROUTINE_TASKS.filter((task) => task.frequency === "monthly");
+export function getTasksForMonth(date = new Date(), definitions: TaskDefinition[] = ROUTINE_TASKS): TaskDefinition[] {
+  const dateKey = localDateKey(date);
+  const month = dateKey.slice(0, 7);
+  return sortBySchedule(definitions.filter((task) => task.frequency === "monthly"
+    && (!task.startDate || task.startDate.slice(0, 7) <= month)
+    && (!task.endDate || task.endDate.slice(0, 7) >= month)));
 }
 
 export function taskCompletionKey(task: TaskDefinition, date: Date): string {
@@ -382,6 +447,7 @@ export function safeImportedData(value: unknown): HouseholdData | null {
     ...base,
     ...candidate,
     version: 2,
+    taskDefinitions: Array.isArray(candidate.taskDefinitions) ? candidate.taskDefinitions as TaskDefinition[] : base.taskDefinitions,
     categories: candidate.categories.filter((item): item is string => typeof item === "string"),
     budgets: candidate.budgets as Record<string, number>,
     completions: normalizedCompletions,

@@ -20,6 +20,7 @@ import {
   ReserveContribution,
   RecurringBill,
   SharedDebt,
+  TaskDefinition,
   Transaction,
   createInitialData,
   monthKey,
@@ -45,6 +46,7 @@ import {
   savePrivateEntry,
   savePrivateDebtPayment,
   saveSharedDebt,
+  saveTaskDefinitions,
   saveTransaction,
   subscribeHouseholdData,
   subscribeMember,
@@ -291,6 +293,10 @@ export default function HouseholdApp() {
     notifyWrite(toggleTaskCompletion(key, by, user.uid), "Tarefa atualizada para a casa.");
   }
 
+  function saveTasks(tasks: TaskDefinition[]) {
+    notifyWrite(saveTaskDefinitions(tasks), "Tarefas da casa sincronizadas.");
+  }
+
   function savePrivate(entry: PrivateEntry) {
     if (!user) return;
     notifyWrite(savePrivateEntry(user.uid, entry), "Registro salvo somente na sua área privada.");
@@ -392,7 +398,7 @@ export default function HouseholdApp() {
         {section === "finance" && <FinanceView data={data} profile={profile} uid={user.uid} month={month} onMonthChange={setMonth} onCreateTransaction={createTransaction} onSaveTransaction={(transaction: Transaction) => notifyWrite(saveTransaction(transaction), "Lançamento atualizado no extrato.")} onDeleteTransaction={(id: string) => notifyWrite(deleteTransaction(id), "Lançamento removido do extrato.")} onSaveDeposit={updateDeposit} onDeleteDeposit={removeDeposit} onSaveReserveContribution={updateReserveContribution} onDeleteReserveContribution={removeReserveContribution} onSaveBillPayment={(payment: BillPayment) => notifyWrite(saveBillPayment(payment), "Pagamento da conta atualizado.")} onDeleteBillPayment={(id: string) => notifyWrite(deleteBillPayment(id), "Pagamento da conta removido.")} onSaveDebtPayment={(payment: DebtPayment) => notifyWrite(saveDebtPayment(payment), "Lançamento da dívida atualizado.")} onDeleteDebtPayment={(id: string) => notifyWrite(deleteDebtPayment(id), "Lançamento da dívida removido e saldo recomposto.")} onSaveBudgets={updateBudgets} />}
         {section === "planning" && <FinancePlanningView data={data} month={selectedMonth} profile={profile} uid={user.uid} onChangeMonth={setPlanningMonth} onSaveSettings={updateSettings} onSaveDeposit={updateDeposit} onDeleteDeposit={removeDeposit} onSaveReserveContribution={updateReserveContribution} onDeleteReserveContribution={removeReserveContribution} onSaveBill={(bill: RecurringBill) => notifyWrite(saveBill(bill), "Conta da casa sincronizada.")} onDeleteBill={(id: string) => notifyWrite(deleteBill(id), "Conta removida.")} onSaveBillPayment={(payment: BillPayment) => notifyWrite(saveBillPayment(payment), "Pagamento da conta registrado.")} onDeleteBillPayment={(id: string) => notifyWrite(deleteBillPayment(id), "Pagamento cancelado; a conta continua cadastrada.")} onSaveDebt={(debt: SharedDebt) => notifyWrite(saveSharedDebt(debt), "Dívida compartilhada sincronizada.")} onDeleteDebt={(id: string) => notifyWrite(deleteSharedDebt(id), "Dívida removida.")} onSaveDebtPayment={(payment: DebtPayment) => notifyWrite(saveDebtPayment(payment), "Parcela compartilhada registrada.")} onDeleteDebtPayment={(id: string) => notifyWrite(deleteDebtPayment(id), "Lançamento da dívida removido e saldo recomposto.")} onGoPrivate={() => setSection("private")} />}
         {section === "private" && <PrivateFinanceView data={data} entries={privateEntries} month={selectedMonth} profile={profile} onChangeMonth={setPlanningMonth} onSaveEntry={savePrivate} onDeleteEntry={(id: string) => user && notifyWrite(deletePrivateEntry(user.uid, id), "Registro removido da sua área privada.")} onSaveDebtPayment={payPrivateDebt} />}
-        {section === "tasks" && <TasksView data={data} profile={profile} onToggle={updateTask} />}
+        {section === "tasks" && <TasksView data={data} profile={profile} onToggle={updateTask} onSaveTasks={saveTasks} />}
       </main>
       {toast && <div className="toast-message" role="status"><span className="toast-check"><Icon name="check" size={14} /></span>{toast}</div>}
     </div>

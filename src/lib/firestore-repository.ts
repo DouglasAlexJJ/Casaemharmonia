@@ -27,6 +27,7 @@ import {
   ReserveContribution,
   RecurringBill,
   SharedDebt,
+  TaskDefinition,
   Transaction,
   createInitialData,
   depositDocumentId,
@@ -121,6 +122,7 @@ export function subscribeHouseholdData(
       deposits,
       reserveContributions,
       completions,
+      taskDefinitions: Array.isArray(config?.taskDefinitions) ? config.taskDefinitions as TaskDefinition[] : defaults.taskDefinitions,
       categories: Array.isArray(config?.categories) ? config.categories as string[] : defaults.categories,
       budgets: config?.budgets && typeof config.budgets === "object" ? config.budgets as Record<string, number> : {},
       financialSettings: normalizeFinancialSettings(config?.financialSettings),
@@ -156,6 +158,22 @@ export async function saveHouseholdSettings(
   if (categories) payload.categories = categories;
   if (budgets) payload.budgets = budgets;
   await setDoc(sharedRef("settings"), payload, { merge: true });
+}
+
+export async function saveTaskDefinitions(taskDefinitions: TaskDefinition[]): Promise<void> {
+  const settingsRef = sharedRef("settings");
+  await runTransaction(getDb(), async (transaction) => {
+    const snapshot = await transaction.get(settingsRef);
+    const current = snapshot.exists() ? snapshot.data() : {};
+    transaction.set(settingsRef, {
+      ...current,
+      type: "settings",
+      categories: Array.isArray(current.categories) ? current.categories : DEFAULT_CATEGORIES,
+      budgets: current.budgets && typeof current.budgets === "object" ? current.budgets : {},
+      financialSettings: normalizeFinancialSettings(current.financialSettings ?? DEFAULT_FINANCIAL_SETTINGS),
+      taskDefinitions,
+    });
+  });
 }
 
 export async function saveBudgets(budgets: Record<string, number>, categories: string[]): Promise<void> {
@@ -327,7 +345,7 @@ export async function importSharedBackup(data: HouseholdData, uid: string): Prom
   }
   const ownDeposits = uniqueMonthlyDeposits(data.deposits.filter((item) => item.uid === uid));
   const operations: Array<{ id: string; value: Record<string, unknown> }> = [
-    { id: "settings", value: { type: "settings", categories: data.categories, budgets: data.budgets, financialSettings: normalizeFinancialSettings(data.financialSettings) } },
+    { id: "settings", value: { type: "settings", categories: data.categories, budgets: data.budgets, financialSettings: normalizeFinancialSettings(data.financialSettings), taskDefinitions: data.taskDefinitions } },
     ...data.transactions.map((item) => ({ id: `transaction_${item.id}`, value: { ...item, type: "transaction" } })),
     ...data.bills.map((item) => ({ id: `bill_${item.id}`, value: { ...item, type: "bill" } })),
     ...data.billPayments.map((item) => ({ id: `billPayment_${item.id}`, value: { ...item, type: "billPayment" } })),
