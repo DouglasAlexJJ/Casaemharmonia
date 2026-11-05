@@ -27,10 +27,13 @@ import {
 } from "@/lib/household";
 import {
   deleteBill,
+  deleteBillPayment,
+  deleteDebtPayment,
   deleteMonthlyDeposit,
   deletePrivateEntry,
   deleteReserveContribution,
   deleteSharedDebt,
+  deleteTransaction,
   importSharedBackup,
   saveBill,
   saveBillPayment,
@@ -386,8 +389,8 @@ export default function HouseholdApp() {
         </header>
         <nav className="mobile-navigation" aria-label="Navegação principal"><button className={section === "finance" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setSection("finance")}><Icon name="wallet" size={17} />Finanças</button><button className={section === "planning" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setSection("planning")}><Icon name="target" size={17} />Config.</button><button className={section === "private" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setSection("private")}><Icon name="lock" size={16} />Privado</button><button className={section === "tasks" ? "mobile-nav-item active" : "mobile-nav-item"} onClick={() => setSection("tasks")}><Icon name="check" size={17} />Tarefas</button></nav>
         {legacyData && <div className="legacy-import-banner"><span><strong>Encontramos uma cópia antiga neste navegador.</strong> Ela só será enviada à nuvem se vocês escolherem importar; dados privados não entram no processo.</span><button className="button button-soft" disabled={legacyImportBusy} onClick={importLegacyData}>{legacyImportBusy ? "Importando…" : "Mesclar cópia antiga"}</button><button className="text-action" onClick={() => setLegacyData(null)}>Agora não</button></div>}
-        {section === "finance" && <FinanceView data={data} profile={profile} month={month} onMonthChange={setMonth} onCreateTransaction={createTransaction} onSaveBudgets={updateBudgets} />}
-        {section === "planning" && <FinancePlanningView data={data} month={selectedMonth} profile={profile} uid={user.uid} onChangeMonth={setPlanningMonth} onSaveSettings={updateSettings} onSaveDeposit={updateDeposit} onDeleteDeposit={removeDeposit} onSaveReserveContribution={updateReserveContribution} onDeleteReserveContribution={removeReserveContribution} onSaveBill={(bill: RecurringBill) => notifyWrite(saveBill(bill), "Conta da casa sincronizada.")} onDeleteBill={(id: string) => notifyWrite(deleteBill(id), "Conta removida.")} onSaveBillPayment={(payment: BillPayment) => notifyWrite(saveBillPayment(payment), "Pagamento da conta registrado.")} onSaveDebt={(debt: SharedDebt) => notifyWrite(saveSharedDebt(debt), "Dívida compartilhada sincronizada.")} onDeleteDebt={(id: string) => notifyWrite(deleteSharedDebt(id), "Dívida removida.")} onSaveDebtPayment={(payment: DebtPayment) => notifyWrite(saveDebtPayment(payment), "Parcela compartilhada registrada.")} onGoPrivate={() => setSection("private")} />}
+        {section === "finance" && <FinanceView data={data} profile={profile} month={month} onMonthChange={setMonth} onCreateTransaction={createTransaction} onDeleteTransaction={(id: string) => notifyWrite(deleteTransaction(id), "Despesa removida.")} onSaveBudgets={updateBudgets} />}
+        {section === "planning" && <FinancePlanningView data={data} month={selectedMonth} profile={profile} uid={user.uid} onChangeMonth={setPlanningMonth} onSaveSettings={updateSettings} onSaveDeposit={updateDeposit} onDeleteDeposit={removeDeposit} onSaveReserveContribution={updateReserveContribution} onDeleteReserveContribution={removeReserveContribution} onSaveBill={(bill: RecurringBill) => notifyWrite(saveBill(bill), "Conta da casa sincronizada.")} onDeleteBill={(id: string) => notifyWrite(deleteBill(id), "Conta removida.")} onSaveBillPayment={(payment: BillPayment) => notifyWrite(saveBillPayment(payment), "Pagamento da conta registrado.")} onDeleteBillPayment={(id: string) => notifyWrite(deleteBillPayment(id), "Pagamento cancelado; a conta continua cadastrada.")} onSaveDebt={(debt: SharedDebt) => notifyWrite(saveSharedDebt(debt), "Dívida compartilhada sincronizada.")} onDeleteDebt={(id: string) => notifyWrite(deleteSharedDebt(id), "Dívida removida.")} onSaveDebtPayment={(payment: DebtPayment) => notifyWrite(saveDebtPayment(payment), "Parcela compartilhada registrada.")} onDeleteDebtPayment={(id: string) => notifyWrite(deleteDebtPayment(id), "Lançamento da dívida removido e saldo recomposto.")} onGoPrivate={() => setSection("private")} />}
         {section === "private" && <PrivateFinanceView data={data} entries={privateEntries} month={selectedMonth} profile={profile} onChangeMonth={setPlanningMonth} onSaveEntry={savePrivate} onDeleteEntry={(id: string) => user && notifyWrite(deletePrivateEntry(user.uid, id), "Registro removido da sua área privada.")} onSaveDebtPayment={payPrivateDebt} />}
         {section === "tasks" && <TasksView data={data} profile={profile} onToggle={updateTask} />}
       </main>

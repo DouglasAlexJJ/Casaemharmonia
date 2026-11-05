@@ -86,3 +86,9 @@
 - Alterar o nome exibido no site para **Tarefas e Financeiro B&D**. A mudança é apenas visual no site; não renomear o projeto Firebase, o caminho `households/casaemharmonia`, o repositório GitHub nem outros identificadores técnicos existentes.
 - Substituir a escala semanal da louça por alternância diária: Douglas em 04/11/2026 e Bruna em 05/11/2026; continuar alternando um dia para cada pessoa. Mostrar uma tarefa de louça por data nas visões diária e semanal e salvar o check separadamente para cada dia.
 - Agendar todas as limpezas abaixo às quartas e sextas. Douglas: Limpeza: Banheiro; Limpeza: Quarto PC; Limpeza: Sala; Limpeza: Garagem. Bruna: Limpeza: Quarto dos bebês; Limpeza: Cozinha; Limpeza: Lavanderia. Mostrar cada item como tarefa marcável nas visões diária e semanal nas quartas e sextas; não o incluir nas tarefas do dia nos outros dias.
+
+
+## [x] 15. Exclusão de despesas e cancelamento de pagamentos
+- Permitir excluir despesas avulsas lançadas na competência selecionada, sem excluir receitas.
+- Permitir remover um lançamento de parcela de dívida e recompor o saldo cadastrado da dívida pelo valor da parcela removida.
+- Para contas fixas e variáveis, permitir cancelar o pagamento já registrado no mês sem remover o cadastro da conta; após cancelar, a conta continua disponível para registrar pagamento novamente.

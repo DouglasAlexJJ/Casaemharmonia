@@ -18,6 +18,7 @@ type FinanceViewProps = {
   month: Date;
   onMonthChange: (date: Date) => void;
   onCreateTransaction: (draft: TransactionDraft) => void;
+  onDeleteTransaction: (id: string) => void;
   onSaveBudgets: (budgets: Record<string, number>, categories: string[]) => void;
 };
 
@@ -192,6 +193,7 @@ export default function FinanceView({
   month,
   onMonthChange,
   onCreateTransaction,
+  onDeleteTransaction,
   onSaveBudgets,
 }: FinanceViewProps) {
   const [showTransaction, setShowTransaction] = useState(false);
@@ -229,7 +231,7 @@ export default function FinanceView({
   }).filter((row) => row.budget > 0).sort((a, b) => b.spent / b.budget - a.spent / a.budget);
   const overBudget = budgetRows.find((row) => row.spent > row.budget);
   const nearBudget = budgetRows.find((row) => row.spent <= row.budget && row.spent / row.budget >= 0.8);
-  const recentTransactions = [...data.transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+  const recentTransactions = [...monthTransactions].sort((a, b) => b.date.localeCompare(a.date));
   const trend = Array.from({ length: 6 }, (_, index) => {
     const date = new Date(month.getFullYear(), month.getMonth() - 5 + index, 1);
     const key = monthKey(date);
@@ -299,8 +301,8 @@ export default function FinanceView({
         <article className="panel insights-panel"><div className="panel-heading"><div><p className="eyebrow">UM OLHAR ATENTO</p><h2>Insights da casa</h2></div><span className="insight-spark"><Icon name="spark" size={18} /></span></div>
           {overBudget ? <div className="insight-message warning-insight"><span className="insight-bullet">!</span><p><strong>{overBudget.category}</strong> está <strong>{Math.round(((overBudget.spent - overBudget.budget) / overBudget.budget) * 100)}% acima</strong> do limite deste mês. Talvez valha olhar os próximos gastos com calma.</p></div> : nearBudget ? <div className="insight-message"><span className="insight-bullet">↗</span><p><strong>{nearBudget.category}</strong> já usou {Math.round((nearBudget.spent / nearBudget.budget) * 100)}% do limite. Ainda restam {formatMoney(nearBudget.budget - nearBudget.spent)} para o mês.</p></div> : budgetRows.length ? <div className="insight-message"><span className="insight-bullet">✓</span><p>Por enquanto, todas as categorias estão dentro dos limites definidos. Um passo de cada vez.</p></div> : <div className="insight-message"><span className="insight-bullet">i</span><p>Definam os limites que fazem sentido para a casa. A gente avisa quando alguma categoria estiver perto ou acima do teto.</p></div>}
         </article>
-        <article className="panel activity-panel"><div className="panel-heading"><div><p className="eyebrow">MOVIMENTAÇÕES RECENTES</p><h2>Últimos lançamentos</h2></div></div>
-          {recentTransactions.length ? <div className="recent-list">{recentTransactions.map((item) => <div className="recent-row" key={item.id}><span className={item.type === "income" ? "recent-icon recent-income" : "recent-icon recent-expense"}><Icon name={item.type === "income" ? "arrowUp" : "arrowDown"} size={15} /></span><div className="recent-description"><strong>{item.description}</strong><span>{item.category} · {formatDay(item.date)} · {item.createdBy.split(" ")[0]}</span></div><strong className={item.type === "income" ? "amount-income" : "amount-expense"}>{item.type === "income" ? "+" : "−"}{formatMoney(item.amount)}</strong></div>)}</div> : <div className="activity-empty"><span className="activity-empty-icon"><Icon name="wallet" size={18} /></span><span>Ainda não há lançamentos.<br />Tudo começa com um pequeno registro.</span></div>}
+        <article className="panel activity-panel"><div className="panel-heading"><div><p className="eyebrow">MOVIMENTAÇÕES DO MÊS</p><h2>Lançamentos desta competência</h2></div></div>
+          {recentTransactions.length ? <div className="recent-list">{recentTransactions.map((item) => <div className="recent-row" key={item.id}><span className={item.type === "income" ? "recent-icon recent-income" : "recent-icon recent-expense"}><Icon name={item.type === "income" ? "arrowUp" : "arrowDown"} size={15} /></span><div className="recent-description"><strong>{item.description}</strong><span>{item.category} · {formatDay(item.date)} · {item.createdBy.split(" ")[0]}</span></div><strong className={item.type === "income" ? "amount-income" : "amount-expense"}>{item.type === "income" ? "+" : "−"}{formatMoney(item.amount)}</strong>{item.type === "expense" && <button className="text-action danger-action" aria-label={`Excluir despesa ${item.description}`} onClick={() => { if (window.confirm(`Excluir a despesa “${item.description}” de ${formatMoney(item.amount)}?`)) onDeleteTransaction(item.id); }}>Excluir</button>}</div>)}</div> : <div className="activity-empty"><span className="activity-empty-icon"><Icon name="wallet" size={18} /></span><span>Ainda não há lançamentos neste mês.<br />Tudo começa com um pequeno registro.</span></div>}
         </article>
       </section>
       <div className="data-note"><span className="status-dot" /> Os dados compartilhados sincronizam pelo Firebase. Registrem salários brutos e pagamentos recebidos em Configurações e evitem duplicar contas ou parcelas no lançamento manual; o backup exclui a área privada.</div>

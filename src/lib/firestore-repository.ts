@@ -196,6 +196,10 @@ export async function saveBillPayment(payment: BillPayment): Promise<void> {
   await setDoc(sharedRef(`billPayment_${payment.id}`), { ...payment, type: "billPayment" });
 }
 
+export async function deleteBillPayment(id: string): Promise<void> {
+  await deleteDoc(sharedRef(`billPayment_${id}`));
+}
+
 export async function saveSharedDebt(debt: SharedDebt): Promise<void> {
   await setDoc(sharedRef(`sharedDebt_${debt.id}`), { ...debt, type: "sharedDebt" });
 }
@@ -215,6 +219,23 @@ export async function saveDebtPayment(payment: DebtPayment): Promise<void> {
     transaction.set(paymentRef, { ...payment, type: "debtPayment" });
     if (debtSnapshot.exists()) {
       transaction.set(debtRef, { currentBalance: Math.max(0, balance + oldAmount - payment.amount) }, { merge: true });
+    }
+  });
+}
+
+export async function deleteDebtPayment(paymentId: string): Promise<void> {
+  const db = getDb();
+  const paymentRef = sharedRef(`debtPayment_${paymentId}`);
+  await runTransaction(db, async (transaction) => {
+    const paymentSnapshot = await transaction.get(paymentRef);
+    if (!paymentSnapshot.exists()) return;
+    const payment = paymentSnapshot.data() as DebtPayment;
+    const debtRef = sharedRef(`sharedDebt_${payment.debtId}`);
+    const debtSnapshot = await transaction.get(debtRef);
+    transaction.delete(paymentRef);
+    if (debtSnapshot.exists()) {
+      const balance = Number(debtSnapshot.data().currentBalance ?? 0);
+      transaction.set(debtRef, { currentBalance: balance + Number(payment.amount ?? 0) }, { merge: true });
     }
   });
 }

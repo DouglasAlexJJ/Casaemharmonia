@@ -751,3 +751,19 @@ button:disabled { opacity: .48; cursor: not-allowed; }
   .reserve-closing-summary { grid-template-columns: 1fr; }
   .reserve-closing-summary > strong { text-align: left; }
 }
+
+
+/* Controles de exclusão de despesas e cancelamento de pagamentos */
+.activity-panel .recent-row { align-items: center; }
+.activity-panel .recent-row .text-action { flex: 0 0 auto; }
+.bill-payment-controls { grid-auto-flow: row; }
+.bill-payment-controls .text-action { justify-self: start; min-height: 28px; }
+.debt-entry-group { border-top: 1px solid #ebedf0; }
+.debt-entry-group .bill-row { border-top: 0; }
+.debt-payment-history-row { display: flex; align-items: center; gap: 12px; padding: 7px 10px 10px 48px; color: #8c958f; font-size: 9px; }
+.debt-payment-history-row strong { color: #515b6b; font-size: 10px; }
+.debt-payment-history-row .text-action { margin-left: auto; }
+@media (max-width: 760px) {
+  .debt-payment-history-row { padding-left: 8px; }
+  .activity-panel .recent-row { flex-wrap: wrap; }
+}
