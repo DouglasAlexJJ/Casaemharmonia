@@ -40,7 +40,11 @@ No documento do outro UID, use `"profile": "Bruna Toth"`. Os nomes aceitos são 
 
 Para desenvolvimento, copie `.env.example` para `.env.local` e preencha os campos do app Web. `.env.local` está excluído do Git. O SDK precisa de `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID` e `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` se esse campo constar na configuração.
 
-Depois de importar o repositório na Vercel, cadastre essas mesmas variáveis em **Settings → Environment Variables** para Production e Preview e faça deploy. Em **Firebase Authentication → Settings → Authorized domains**, inclua `localhost` e o domínio atribuído pela Vercel; adicione também o domínio de Preview que vocês utilizarem. Se Google Auth abrir dentro de um iframe/Preview, teste em uma aba própria caso o navegador bloqueie a janela de login.
+Depois de importar o repositório na Vercel, cadastre as variáveis Firebase em **Settings → Environment Variables** para Production e Preview. Para abrir o retorno Google no mesmo domínio no celular, o site de produção usa `tarefasefinanceirodeb.vercel.app` como `authDomain`, enquanto o Next.js encaminha `/__/auth/*` e `/__/firebase/*` de forma transparente para `https://casaemharmonia-4df2d.firebaseapp.com`. O `.env.local` de desenvolvimento e os previews continuam usando o `authDomain` padrão do Firebase.
+
+Em **Firebase Authentication → Settings → Authorized domains**, inclua `localhost` e `tarefasefinanceirodeb.vercel.app`. No OAuth Web Client usado pelo provedor Google, inclua em **Authorized redirect URIs** exatamente `https://tarefasefinanceirodeb.vercel.app/__/auth/handler`. Essa URI e o sufixo `/__/auth/handler` são necessários para o novo domínio de autenticação. A recomendação oficial para sites que não usam Firebase Hosting é fazer proxy das solicitações `/__/auth/` [Firebase: práticas recomendadas para `signInWithRedirect`](https://firebase.google.com/docs/auth/web/redirect-best-practices).
+
+Não altere as regras do Firestore nem cadastre novamente os membros por causa desse proxy; ele muda apenas o caminho da autenticação. Se Google Auth abrir dentro de um iframe/Preview, teste em uma aba própria caso o navegador bloqueie a janela de login.
 
 O HTML e a tela de login da Vercel podem ser abertos por visitantes; apenas a leitura e a gravação dos dados estão restritas pelas regras Firestore e pela lista de UIDs ativos. Se quiser restringir também a página do site, habilite **Vercel Deployment Protection**.
 
