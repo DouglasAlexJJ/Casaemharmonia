@@ -3,7 +3,11 @@
 import { FormEvent, useMemo, useState } from "react";
 import {
   HouseholdData,
+  BillPayment,
+  DebtPayment,
+  MonthlyDeposit,
   Profile,
+  ReserveContribution,
   Transaction,
   TransactionType,
   monthKey,
@@ -18,8 +22,22 @@ type FinanceViewProps = {
   month: Date;
   onMonthChange: (date: Date) => void;
   onCreateTransaction: (draft: TransactionDraft) => void;
+  uid: string;
+  onSaveTransaction: (transaction: Transaction) => void;
+  onDeleteTransaction: (id: string) => void;
+  onSaveDeposit: (deposit: MonthlyDeposit) => void;
+  onDeleteDeposit: (id: string) => void;
+  onSaveReserveContribution: (contribution: ReserveContribution) => void;
+  onDeleteReserveContribution: (id: string) => void;
+  onSaveBillPayment: (payment: BillPayment) => void;
+  onDeleteBillPayment: (id: string) => void;
+  onSaveDebtPayment: (payment: DebtPayment) => void;
+  onDeleteDebtPayment: (id: string) => void;
   onSaveBudgets: (budgets: Record<string, number>, categories: string[]) => void;
 };
+
+type LedgerKind = "transaction" | "deposit" | "reserve" | "bill" | "debt";
+type LedgerRow = { kind: LedgerKind; id: string; date: string; label: string; category: string; amount: number; direction: "income" | "expense"; source: Transaction | MonthlyDeposit | ReserveContribution | BillPayment | DebtPayment; editable: boolean };
 
 const PALETTE = ["#283d67", "#d99b54", "#848b98", "#b66550", "#5c7c9c", "#aa9bb0", "#9b824f", "#c7c4b8"];
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -34,12 +52,13 @@ function monthlyOutflows(data: HouseholdData, key: string) {
     .filter((item) => item.type === "expense" && item.date.slice(0, 7) === key)
     .reduce((sum, item) => sum + item.amount, 0);
   const bills = data.billPayments
-    .filter((item) => item.month === key)
+    .filter((item) => item.month === key && data.bills.some((bill) => bill.id === item.billId))
     .reduce((sum, item) => sum + item.amount, 0);
   const debts = data.debtPayments
-    .filter((item) => item.month === key)
+    .filter((item) => item.month === key && data.sharedDebts.some((debt) => debt.id === item.debtId))
     .reduce((sum, item) => sum + item.amount, 0);
-  return transactions + bills + debts;
+  const reserve = data.reserveContributions.filter((item) => item.month === key).reduce((sum, item) => sum + item.amount, 0);
+  return transactions + bills + debts + reserve;
 }
 
 function categoryOutflows(data: HouseholdData, key: string, category: string) {
@@ -48,12 +67,15 @@ function categoryOutflows(data: HouseholdData, key: string, category: string) {
     .reduce((sum, item) => sum + item.amount, 0);
   const billIds = new Set(data.bills.filter((bill) => bill.category === category).map((bill) => bill.id));
   const bills = data.billPayments
-    .filter((item) => item.month === key && (item.category === category || (!item.category && billIds.has(item.billId))))
+    .filter((item) => item.month === key && data.bills.some((bill) => bill.id === item.billId) && (item.category === category || (!item.category && billIds.has(item.billId))))
     .reduce((sum, item) => sum + item.amount, 0);
   const debts = category === "Dívidas"
-    ? data.debtPayments.filter((item) => item.month === key).reduce((sum, item) => sum + item.amount, 0)
+    ? data.debtPayments.filter((item) => item.month === key && data.sharedDebts.some((debt) => debt.id === item.debtId)).reduce((sum, item) => sum + item.amount, 0)
     : 0;
-  return transactions + bills + debts;
+  const reserve = category === "Reserva de emergência"
+    ? data.reserveContributions.filter((item) => item.month === key).reduce((sum, item) => sum + item.amount, 0)
+    : 0;
+  return transactions + bills + debts + reserve;
 }
 
 function formatDay(value: string) {
@@ -109,7 +131,7 @@ function TransactionModal({
             <button type="button" className={type === "expense" ? "segment active expense" : "segment"} onClick={() => setType("expense")}><Icon name="arrowDown" size={16} /> Despesa</button>
             <button type="button" className={type === "income" ? "segment active income" : "segment"} onClick={() => setType("income")}><Icon name="arrowUp" size={16} /> Receita</button>
           </div>
-          {type === "income" && <p className="form-note">Depósitos mensais são registrados em Planejamento, para não contar o mesmo salário duas vezes.</p>}
+          {type === "income" && <p className="form-note">Pagamentos recebidos são registrados em Configurações, com histórico por pessoa e competência.</p>}
           <label className="field-label">Descrição
             <input autoFocus required value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Ex.: mercado da semana" />
           </label>
@@ -192,10 +214,23 @@ export default function FinanceView({
   month,
   onMonthChange,
   onCreateTransaction,
+  uid,
+  onSaveTransaction,
+  onDeleteTransaction,
+  onSaveDeposit,
+  onDeleteDeposit,
+  onSaveReserveContribution,
+  onDeleteReserveContribution,
+  onSaveBillPayment,
+  onDeleteBillPayment,
+  onSaveDebtPayment,
+  onDeleteDebtPayment,
   onSaveBudgets,
 }: FinanceViewProps) {
   const [showTransaction, setShowTransaction] = useState(false);
   const [showBudgets, setShowBudgets] = useState(false);
+  const [ledgerEditing, setLedgerEditing] = useState<LedgerRow | null>(null);
+  const [ledgerDraft, setLedgerDraft] = useState({ amount: "", date: "", label: "", category: "", bankBalance: "" });
   const currentMonth = monthKey(month);
   const monthTransactions = useMemo(
     () => data.transactions.filter((item) => item.date.slice(0, 7) === currentMonth),
@@ -204,8 +239,8 @@ export default function FinanceView({
   const monthDeposits = data.deposits.filter((item) => item.month === currentMonth);
   const incomeTransactions = monthTransactions.filter((item) => item.type === "income");
   const expenseTransactions = monthTransactions.filter((item) => item.type === "expense");
-  const billPaymentsThisMonth = data.billPayments.filter((item) => item.month === currentMonth);
-  const debtPaymentsThisMonth = data.debtPayments.filter((item) => item.month === currentMonth);
+  const billPaymentsThisMonth = data.billPayments.filter((item) => item.month === currentMonth && data.bills.some((bill) => bill.id === item.billId));
+  const debtPaymentsThisMonth = data.debtPayments.filter((item) => item.month === currentMonth && data.sharedDebts.some((debt) => debt.id === item.debtId));
   const income = incomeTransactions.reduce((sum, item) => sum + item.amount, 0) + monthDeposits.reduce((sum, item) => sum + item.amount, 0);
   const expenses = monthlyOutflows(data, currentMonth);
   const balance = income - expenses;
@@ -213,7 +248,12 @@ export default function FinanceView({
     category,
     color: PALETTE[index % PALETTE.length],
     amount: categoryOutflows(data, currentMonth, category),
-  })).filter((item) => item.amount > 0).sort((a, b) => b.amount - a.amount);
+  })).filter((item) => item.amount > 0);
+  if (!data.categories.includes("Reserva de emergência")) {
+    const reserveTotal = data.reserveContributions.filter((item) => item.month === currentMonth).reduce((sum, item) => sum + item.amount, 0);
+    if (reserveTotal > 0) categorySpending.push({ category: "Reserva de emergência", color: PALETTE[6], amount: reserveTotal });
+  }
+  categorySpending.sort((a, b) => b.amount - a.amount);
   const totalCategorySpending = categorySpending.reduce((sum, item) => sum + item.amount, 0);
   let cursor = 0;
   const donutGradient = totalCategorySpending === 0
@@ -229,7 +269,13 @@ export default function FinanceView({
   }).filter((row) => row.budget > 0).sort((a, b) => b.spent / b.budget - a.spent / a.budget);
   const overBudget = budgetRows.find((row) => row.spent > row.budget);
   const nearBudget = budgetRows.find((row) => row.spent <= row.budget && row.spent / row.budget >= 0.8);
-  const recentTransactions = [...data.transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+  const ledgerRows: LedgerRow[] = [
+    ...monthTransactions.map((item): LedgerRow => ({ kind: "transaction", id: item.id, date: item.date, label: item.description, category: item.category, amount: item.amount, direction: item.type, source: item, editable: true })),
+    ...monthDeposits.map((item): LedgerRow => ({ kind: "deposit", id: item.id, date: item.receivedOn, label: `Pagamento recebido · ${item.profile.split(" ")[0]}`, category: "Salário recebido", amount: item.amount, direction: "income", source: item, editable: item.uid === uid })),
+    ...data.reserveContributions.filter((item) => item.month === currentMonth).map((item): LedgerRow => ({ kind: "reserve", id: item.id, date: item.depositedOn, label: `Aporte para reserva · saldo no banco ${formatMoney(item.bankBalance)}`, category: "Reserva de emergência", amount: item.amount, direction: "expense", source: item, editable: item.recordedByUid === uid })),
+    ...billPaymentsThisMonth.map((item): LedgerRow => ({ kind: "bill", id: item.id, date: item.paidOn, label: data.bills.find((bill) => bill.id === item.billId)?.name ?? "Pagamento de conta (cadastro removido)", category: item.category ?? "Contas", amount: item.amount, direction: "expense", source: item, editable: true })),
+    ...debtPaymentsThisMonth.map((item): LedgerRow => ({ kind: "debt", id: item.id, date: item.paidOn, label: data.sharedDebts.find((debt) => debt.id === item.debtId)?.name ?? "Pagamento de dívida", category: "Dívidas", amount: item.amount, direction: "expense", source: item, editable: true })),
+  ].sort((a, b) => b.date.localeCompare(a.date));
   const trend = Array.from({ length: 6 }, (_, index) => {
     const date = new Date(month.getFullYear(), month.getMonth() - 5 + index, 1);
     const key = monthKey(date);
@@ -245,6 +291,60 @@ export default function FinanceView({
   function saveTransaction(draft: TransactionDraft) {
     onCreateTransaction(draft);
     setShowTransaction(false);
+  }
+
+  function beginLedgerEdit(row: LedgerRow) {
+    setLedgerEditing(row);
+    const bankBalance = row.kind === "reserve" ? String((row.source as ReserveContribution).bankBalance) : "";
+    setLedgerDraft({ amount: String(row.amount), date: row.date, label: row.label, category: row.category, bankBalance });
+  }
+
+  function saveLedgerEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!ledgerEditing) return;
+    const amount = Number(ledgerDraft.amount);
+    if (!Number.isFinite(amount) || amount <= 0 || !ledgerDraft.date) return;
+    const month = ledgerDraft.date.slice(0, 7);
+    switch (ledgerEditing.kind) {
+      case "transaction": {
+        const original = ledgerEditing.source as Transaction;
+        onSaveTransaction({ ...original, amount, date: ledgerDraft.date, description: ledgerDraft.label.trim(), category: ledgerDraft.category.trim() });
+        break;
+      }
+      case "deposit": {
+        const original = ledgerEditing.source as MonthlyDeposit;
+        onSaveDeposit({ ...original, amount, receivedOn: ledgerDraft.date, month });
+        break;
+      }
+      case "reserve": {
+        const original = ledgerEditing.source as ReserveContribution;
+        const bankBalance = Number(ledgerDraft.bankBalance);
+        if (!Number.isFinite(bankBalance) || bankBalance < 0) return;
+        onSaveReserveContribution({ ...original, amount, depositedOn: ledgerDraft.date, month, bankBalance, recordedAt: new Date().toISOString() });
+        break;
+      }
+      case "bill": {
+        const original = ledgerEditing.source as BillPayment;
+        onSaveBillPayment({ ...original, amount, paidOn: ledgerDraft.date, month });
+        break;
+      }
+      case "debt": {
+        const original = ledgerEditing.source as DebtPayment;
+        onSaveDebtPayment({ ...original, amount, paidOn: ledgerDraft.date, month });
+        break;
+      }
+    }
+    setLedgerEditing(null);
+  }
+
+  function deleteLedgerRow(row: LedgerRow) {
+    const label = `Excluir “${row.label}” (${formatMoney(row.amount)})?`;
+    if (!window.confirm(label)) return;
+    if (row.kind === "transaction") onDeleteTransaction(row.id);
+    else if (row.kind === "deposit") onDeleteDeposit(row.id);
+    else if (row.kind === "reserve") onDeleteReserveContribution(row.id);
+    else if (row.kind === "bill") onDeleteBillPayment(row.id);
+    else onDeleteDebtPayment(row.id);
   }
 
   return (
@@ -265,7 +365,7 @@ export default function FinanceView({
 
       <section className="summary-grid" aria-label="Resumo mensal">
         <article className="summary-card income-card"><div className="summary-top"><span>Entradas</span><span className="summary-icon income-icon"><Icon name="arrowDown" size={16} /></span></div><strong>{formatMoney(income)}</strong><small>{monthDeposits.length} depósitos · {incomeTransactions.length} outras entradas</small></article>
-        <article className="summary-card expense-card"><div className="summary-top"><span>Saídas pagas e lançadas</span><span className="summary-icon expense-icon"><Icon name="arrowUp" size={16} /></span></div><strong>{formatMoney(expenses)}</strong><small>{expenseTransactions.length} lançamentos · {billPaymentsThisMonth.length + debtPaymentsThisMonth.length} contas/parcelas</small></article>
+        <article className="summary-card expense-card"><div className="summary-top"><span>Saídas e aportes reais</span><span className="summary-icon expense-icon"><Icon name="arrowUp" size={16} /></span></div><strong>{formatMoney(expenses)}</strong><small>{expenseTransactions.length} despesas · {billPaymentsThisMonth.length + debtPaymentsThisMonth.length} contas/parcelas · {data.reserveContributions.filter((item) => item.month === currentMonth).length} aportes</small></article>
         <article className="summary-card balance-card"><div className="summary-top"><span>Saldo do mês</span><span className="summary-icon balance-icon"><Icon name="layers" size={16} /></span></div><strong className={balance < 0 ? "negative-value" : ""}>{formatMoney(balance)}</strong><small>{balance >= 0 ? "Entradas menos saídas registradas" : "As saídas passaram das entradas"}</small></article>
       </section>
 
@@ -299,11 +399,20 @@ export default function FinanceView({
         <article className="panel insights-panel"><div className="panel-heading"><div><p className="eyebrow">UM OLHAR ATENTO</p><h2>Insights da casa</h2></div><span className="insight-spark"><Icon name="spark" size={18} /></span></div>
           {overBudget ? <div className="insight-message warning-insight"><span className="insight-bullet">!</span><p><strong>{overBudget.category}</strong> está <strong>{Math.round(((overBudget.spent - overBudget.budget) / overBudget.budget) * 100)}% acima</strong> do limite deste mês. Talvez valha olhar os próximos gastos com calma.</p></div> : nearBudget ? <div className="insight-message"><span className="insight-bullet">↗</span><p><strong>{nearBudget.category}</strong> já usou {Math.round((nearBudget.spent / nearBudget.budget) * 100)}% do limite. Ainda restam {formatMoney(nearBudget.budget - nearBudget.spent)} para o mês.</p></div> : budgetRows.length ? <div className="insight-message"><span className="insight-bullet">✓</span><p>Por enquanto, todas as categorias estão dentro dos limites definidos. Um passo de cada vez.</p></div> : <div className="insight-message"><span className="insight-bullet">i</span><p>Definam os limites que fazem sentido para a casa. A gente avisa quando alguma categoria estiver perto ou acima do teto.</p></div>}
         </article>
-        <article className="panel activity-panel"><div className="panel-heading"><div><p className="eyebrow">MOVIMENTAÇÕES RECENTES</p><h2>Últimos lançamentos</h2></div></div>
-          {recentTransactions.length ? <div className="recent-list">{recentTransactions.map((item) => <div className="recent-row" key={item.id}><span className={item.type === "income" ? "recent-icon recent-income" : "recent-icon recent-expense"}><Icon name={item.type === "income" ? "arrowUp" : "arrowDown"} size={15} /></span><div className="recent-description"><strong>{item.description}</strong><span>{item.category} · {formatDay(item.date)} · {item.createdBy.split(" ")[0]}</span></div><strong className={item.type === "income" ? "amount-income" : "amount-expense"}>{item.type === "income" ? "+" : "−"}{formatMoney(item.amount)}</strong></div>)}</div> : <div className="activity-empty"><span className="activity-empty-icon"><Icon name="wallet" size={18} /></span><span>Ainda não há lançamentos.<br />Tudo começa com um pequeno registro.</span></div>}
-        </article>
       </section>
-      <div className="data-note"><span className="status-dot" /> Os dados compartilhados sincronizam pelo Firebase. Registrem salários em Planejamento e evitem duplicar contas ou parcelas no lançamento manual; o backup exclui a área privada.</div>
+      <section className="panel activity-panel ledger-panel">
+        <div className="panel-heading"><div><p className="eyebrow">EXTRATO DA COMPETÊNCIA</p><h2>Histórico de lançamentos</h2><p className="panel-description">Inclui despesas, pagamentos de contas e dívidas, valores recebidos e aportes da reserva. Edite ou exclua direto por aqui.</p></div><strong className="ledger-count">{ledgerRows.length} registros</strong></div>
+        {ledgerEditing && <form className="ledger-editor" onSubmit={saveLedgerEdit}>
+          <div className="ledger-editor-heading"><strong>Editar: {ledgerEditing.label}</strong><button className="text-action" type="button" onClick={() => setLedgerEditing(null)}>Cancelar</button></div>
+          <label className="field-label"><span>{ledgerEditing.direction === "income" ? "Valor recebido" : "Valor lançado"}</span><div className="money-input"><span>R$</span><input required type="number" min="0.01" step="0.01" value={ledgerDraft.amount} onChange={(event) => setLedgerDraft((draft) => ({ ...draft, amount: event.target.value }))} /></div></label>
+          <label className="field-label"><span>Data</span><input required type="date" value={ledgerDraft.date} onChange={(event) => setLedgerDraft((draft) => ({ ...draft, date: event.target.value }))} /></label>
+          {ledgerEditing.kind === "transaction" && <><label className="field-label"><span>Descrição</span><input required value={ledgerDraft.label} onChange={(event) => setLedgerDraft((draft) => ({ ...draft, label: event.target.value }))} /></label><label className="field-label"><span>Categoria</span><select value={ledgerDraft.category} onChange={(event) => setLedgerDraft((draft) => ({ ...draft, category: event.target.value }))}>{data.categories.map((category) => <option key={category}>{category}</option>)}</select></label></>}
+          {ledgerEditing.kind === "reserve" && <label className="field-label"><span>Saldo da reserva informado pelo banco</span><div className="money-input"><span>R$</span><input required type="number" min="0" step="0.01" value={ledgerDraft.bankBalance} onChange={(event) => setLedgerDraft((draft) => ({ ...draft, bankBalance: event.target.value }))} /></div></label>}
+          <button className="button button-primary" type="submit">Salvar alterações</button>
+        </form>}
+        {ledgerRows.length ? <div className="ledger-list">{ledgerRows.map((row) => <article className="ledger-row" key={`${row.kind}:${row.id}`}><span className={`recent-icon ${row.direction === "income" ? "recent-income" : "recent-expense"}`}><Icon name={row.direction === "income" ? "arrowDown" : "arrowUp"} size={15} /></span><div className="recent-description"><strong>{row.label}</strong><span>{row.category} · {formatDay(row.date)} · {row.kind === "transaction" ? (row.source as Transaction).createdBy.split(" ")[0] : row.kind === "deposit" ? (row.source as MonthlyDeposit).profile.split(" ")[0] : row.kind === "reserve" ? (row.source as ReserveContribution).recordedBy.split(" ")[0] : row.kind === "bill" ? "Conta" : "Dívida"}</span></div><strong className={row.direction === "income" ? "amount-income" : "amount-expense"}>{row.direction === "income" ? "+" : "−"}{formatMoney(row.amount)}</strong><div className="ledger-actions">{row.editable && <button className="text-action" onClick={() => beginLedgerEdit(row)}>Editar</button>}{row.editable && <button className="text-action danger-action" onClick={() => deleteLedgerRow(row)}>Excluir</button>}</div></article>)}</div> : <div className="activity-empty"><span className="activity-empty-icon"><Icon name="wallet" size={18} /></span><span>Não há movimentações nesta competência.<br />Pagamentos recebidos e aportes aparecem aqui quando registrados em Configurações.</span></div>}
+      </section>
+      <div className="data-note"><span className="status-dot" /> Os dados compartilhados sincronizam pelo Firebase. Registrem salários brutos e pagamentos recebidos em Configurações e evitem duplicar contas ou parcelas no lançamento manual; o backup exclui a área privada.</div>
       <button className="mobile-add-button" onClick={() => setShowTransaction(true)}><Icon name="plus" size={20} /> Novo lançamento</button>
 
       {showTransaction && <TransactionModal categories={data.categories} profile={profile} onClose={() => setShowTransaction(false)} onSave={saveTransaction} />}

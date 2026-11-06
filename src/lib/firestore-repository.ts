@@ -2,9 +2,12 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   onSnapshot,
+  query,
   runTransaction,
   setDoc,
+  where,
   writeBatch,
   type Unsubscribe,
 } from "firebase/firestore";
@@ -21,8 +24,10 @@ import {
   MonthlyDeposit,
   PrivateEntry,
   Profile,
+  ReserveContribution,
   RecurringBill,
   SharedDebt,
+  TaskDefinition,
   Transaction,
   createInitialData,
   depositDocumentId,
@@ -101,6 +106,7 @@ export function subscribeHouseholdData(
     const debtPayments = withoutDocId<DebtPayment>(docs.filter((item) => item.type === "debtPayment"));
     const deposits = uniqueMonthlyDeposits(docs.filter((item) => item.type === "deposit")
       .map(({ docId, ...item }) => ({ ...item, id: docId }) as MonthlyDeposit));
+    const reserveContributions = withoutDocId<ReserveContribution>(docs.filter((item) => item.type === "reserveContribution"));
     const completions: HouseholdData["completions"] = {};
     for (const item of docs.filter((docValue) => docValue.type === "taskCompletions")) {
       const items = item.items && typeof item.items === "object" ? item.items as Record<string, CompletionRecord> : {};
@@ -114,7 +120,9 @@ export function subscribeHouseholdData(
       sharedDebts,
       debtPayments,
       deposits,
+      reserveContributions,
       completions,
+      taskDefinitions: Array.isArray(config?.taskDefinitions) ? config.taskDefinitions as TaskDefinition[] : defaults.taskDefinitions,
       categories: Array.isArray(config?.categories) ? config.categories as string[] : defaults.categories,
       budgets: config?.budgets && typeof config.budgets === "object" ? config.budgets as Record<string, number> : {},
       financialSettings: normalizeFinancialSettings(config?.financialSettings),
@@ -152,6 +160,25 @@ export async function saveHouseholdSettings(
   await setDoc(sharedRef("settings"), payload, { merge: true });
 }
 
+export async function saveTaskDefinitions(taskDefinitions: TaskDefinition[]): Promise<void> {
+  const settingsRef = sharedRef("settings");
+  const firestoreTasks = taskDefinitions.map((task) => Object.fromEntries(
+    Object.entries(task).filter(([, value]) => value !== undefined),
+  ) as TaskDefinition);
+  await runTransaction(getDb(), async (transaction) => {
+    const snapshot = await transaction.get(settingsRef);
+    const current = snapshot.exists() ? snapshot.data() : {};
+    transaction.set(settingsRef, {
+      ...current,
+      type: "settings",
+      categories: Array.isArray(current.categories) ? current.categories : DEFAULT_CATEGORIES,
+      budgets: current.budgets && typeof current.budgets === "object" ? current.budgets : {},
+      financialSettings: normalizeFinancialSettings(current.financialSettings ?? DEFAULT_FINANCIAL_SETTINGS),
+      taskDefinitions: firestoreTasks,
+    });
+  });
+}
+
 export async function saveBudgets(budgets: Record<string, number>, categories: string[]): Promise<void> {
   const settingsRef = sharedRef("settings");
   await runTransaction(getDb(), async (transaction) => {
@@ -186,11 +213,20 @@ export async function saveBill(bill: RecurringBill): Promise<void> {
 }
 
 export async function deleteBill(id: string): Promise<void> {
-  await deleteDoc(sharedRef(`bill_${id}`));
+  const db = getDb();
+  const linkedPayments = await getDocs(query(sharedCollection(), where("type", "==", "billPayment"), where("billId", "==", id)));
+  const batch = writeBatch(db);
+  linkedPayments.docs.forEach((payment) => batch.delete(payment.ref));
+  batch.delete(sharedRef(`bill_${id}`));
+  await batch.commit();
 }
 
 export async function saveBillPayment(payment: BillPayment): Promise<void> {
   await setDoc(sharedRef(`billPayment_${payment.id}`), { ...payment, type: "billPayment" });
+}
+
+export async function deleteBillPayment(id: string): Promise<void> {
+  await deleteDoc(sharedRef(`billPayment_${id}`));
 }
 
 export async function saveSharedDebt(debt: SharedDebt): Promise<void> {
@@ -198,7 +234,12 @@ export async function saveSharedDebt(debt: SharedDebt): Promise<void> {
 }
 
 export async function deleteSharedDebt(id: string): Promise<void> {
-  await deleteDoc(sharedRef(`sharedDebt_${id}`));
+  const db = getDb();
+  const linkedPayments = await getDocs(query(sharedCollection(), where("type", "==", "debtPayment"), where("debtId", "==", id)));
+  const batch = writeBatch(db);
+  linkedPayments.docs.forEach((payment) => batch.delete(payment.ref));
+  batch.delete(sharedRef(`sharedDebt_${id}`));
+  await batch.commit();
 }
 
 export async function saveDebtPayment(payment: DebtPayment): Promise<void> {
@@ -216,8 +257,51 @@ export async function saveDebtPayment(payment: DebtPayment): Promise<void> {
   });
 }
 
+export async function deleteDebtPayment(paymentId: string): Promise<void> {
+  const db = getDb();
+  const paymentRef = sharedRef(`debtPayment_${paymentId}`);
+  await runTransaction(db, async (transaction) => {
+    const paymentSnapshot = await transaction.get(paymentRef);
+    if (!paymentSnapshot.exists()) return;
+    const payment = paymentSnapshot.data() as DebtPayment;
+    const debtRef = sharedRef(`sharedDebt_${payment.debtId}`);
+    const debtSnapshot = await transaction.get(debtRef);
+    transaction.delete(paymentRef);
+    if (debtSnapshot.exists()) {
+      const balance = Number(debtSnapshot.data().currentBalance ?? 0);
+      transaction.set(debtRef, { currentBalance: balance + Number(payment.amount ?? 0) }, { merge: true });
+    }
+  });
+}
+
 export async function saveMonthlyDeposit(deposit: MonthlyDeposit): Promise<void> {
+  const services = getFirebaseServices();
+  if (!services?.auth.currentUser || services.auth.currentUser.uid !== deposit.uid) {
+    throw new Error("Cada perfil só pode registrar ou editar os próprios pagamentos recebidos.");
+  }
   await setDoc(sharedRef(depositDocumentId(deposit)), { ...deposit, type: "deposit" });
+}
+
+export async function deleteMonthlyDeposit(id: string, uid: string): Promise<void> {
+  const services = getFirebaseServices();
+  if (!services?.auth.currentUser || services.auth.currentUser.uid !== uid) {
+    throw new Error("Cada perfil só pode excluir os próprios pagamentos recebidos.");
+  }
+  const ref = sharedRef(id.startsWith("deposit_") ? id : `deposit_${id}`);
+  await runTransaction(getDb(), async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    if (!snapshot.exists()) return;
+    if (snapshot.data().uid !== uid) throw new Error("Não é permitido excluir o pagamento de outro perfil.");
+    transaction.delete(ref);
+  });
+}
+
+export async function saveReserveContribution(contribution: ReserveContribution): Promise<void> {
+  await setDoc(sharedRef(`reserveContribution_${contribution.id}`), { ...contribution, type: "reserveContribution" });
+}
+
+export async function deleteReserveContribution(id: string): Promise<void> {
+  await deleteDoc(sharedRef(`reserveContribution_${id}`));
 }
 
 export async function toggleTaskCompletion(key: string, profile: Profile, uid: string): Promise<void> {
@@ -264,13 +348,14 @@ export async function importSharedBackup(data: HouseholdData, uid: string): Prom
   }
   const ownDeposits = uniqueMonthlyDeposits(data.deposits.filter((item) => item.uid === uid));
   const operations: Array<{ id: string; value: Record<string, unknown> }> = [
-    { id: "settings", value: { type: "settings", categories: data.categories, budgets: data.budgets, financialSettings: normalizeFinancialSettings(data.financialSettings) } },
+    { id: "settings", value: { type: "settings", categories: data.categories, budgets: data.budgets, financialSettings: normalizeFinancialSettings(data.financialSettings), taskDefinitions: data.taskDefinitions } },
     ...data.transactions.map((item) => ({ id: `transaction_${item.id}`, value: { ...item, type: "transaction" } })),
     ...data.bills.map((item) => ({ id: `bill_${item.id}`, value: { ...item, type: "bill" } })),
     ...data.billPayments.map((item) => ({ id: `billPayment_${item.id}`, value: { ...item, type: "billPayment" } })),
     ...data.sharedDebts.map((item) => ({ id: `sharedDebt_${item.id}`, value: { ...item, type: "sharedDebt" } })),
     ...data.debtPayments.map((item) => ({ id: `debtPayment_${item.id}`, value: { ...item, type: "debtPayment" } })),
     ...ownDeposits.map((item) => ({ id: depositDocumentId(item), value: { ...item, type: "deposit" } })),
+    ...data.reserveContributions.map((item) => ({ id: `reserveContribution_${item.id}`, value: { ...item, type: "reserveContribution" } })),
   ];
   const completionsByMonth = new Map<string, Record<string, CompletionRecord>>();
   for (const [key, value] of Object.entries(data.completions)) {

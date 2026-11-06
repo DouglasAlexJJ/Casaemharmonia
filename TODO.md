@@ -67,6 +67,16 @@
 - Usar o email de autoria Git `douglasalexjj@outlook.com.br`.
 - Deixar instruções para configurar as variáveis do Firebase e importar o repositório na Vercel; não criar o projeto Vercel, pois o usuário fará essa etapa após o push.
 
+## [x] 14. Configurações financeiras, lançamentos recebidos e conferência da reserva
+- A área atualmente apresentada como Planejamento deve ser apresentada como **Configurações** e reunir os salários brutos de Douglas e Bruna e os percentuais configuráveis para reserva de emergência e investimentos.
+- Com base no salário bruto e nos percentuais configurados, calcular quanto se recomenda guardar para a reserva de emergência e quanto se destina a investimentos.
+- A recomendação da reserva de emergência não pode ser descontada do valor do salário nem do valor disponível; deve permanecer como sugestão separada.
+- A área **Entrada real** deve funcionar como lançador dos pagamentos recebidos, permitir vários lançamentos e apresentar o histórico de lançamentos.
+- Permitir editar e excluir lançamentos de pagamentos já realizados; cada perfil só pode alterar seus próprios lançamentos.
+- O saldo da reserva deve ser formado pelos aportes efetivamente lançados, sem substituir o valor recomendado por aportes fictícios.
+- Ao lançar um aporte à reserva, solicitar o valor depositado e o saldo atual da reserva informado pelo banco.
+- No fechamento de cada mês, apresentar comparativo entre o total efetivamente depositado na reserva e o saldo informado pelo banco, mostrando a diferença (incluindo juros/rendimentos).
+
 ## [x] 12. Paleta azul-marinho
 - Remover o verde da identidade visual do site e aplicar azul-marinho/azuis frios em estilo financeiro, preservando tons neutros e cores semânticas de alerta.
 - Atualizar os símbolos de marca exibidos pelo site para corresponder à paleta azul-marinho.
@@ -77,3 +87,23 @@
 - Alterar o nome exibido no site para **Tarefas e Financeiro B&D**. A mudança é apenas visual no site; não renomear o projeto Firebase, o caminho `households/casaemharmonia`, o repositório GitHub nem outros identificadores técnicos existentes.
 - Substituir a escala semanal da louça por alternância diária: Douglas em 04/11/2026 e Bruna em 05/11/2026; continuar alternando um dia para cada pessoa. Mostrar uma tarefa de louça por data nas visões diária e semanal e salvar o check separadamente para cada dia.
 - Agendar todas as limpezas abaixo às quartas e sextas. Douglas: Limpeza: Banheiro; Limpeza: Quarto PC; Limpeza: Sala; Limpeza: Garagem. Bruna: Limpeza: Quarto dos bebês; Limpeza: Cozinha; Limpeza: Lavanderia. Mostrar cada item como tarefa marcável nas visões diária e semanal nas quartas e sextas; não o incluir nas tarefas do dia nos outros dias.
+
+
+## [x] 15. Exclusão de despesas e cancelamento de pagamentos
+- Permitir excluir despesas avulsas lançadas na competência selecionada, sem excluir receitas.
+- Permitir remover um lançamento de parcela de dívida e recompor o saldo cadastrado da dívida pelo valor da parcela removida.
+- Para contas fixas e variáveis, permitir cancelar o pagamento já registrado no mês sem remover o cadastro da conta; após cancelar, a conta continua disponível para registrar pagamento novamente.
+
+## [x] 16. Extrato unificado da competência
+- Exibir em um subpainel de Finanças todos os lançamentos da competência selecionada: receitas/despesas avulsas, pagamentos recebidos em Configurações, aportes da reserva, pagamentos de contas e parcelas de dívidas.
+- Permitir editar diretamente no extrato os valores e datas; nos lançamentos avulsos, também a descrição e categoria; nos aportes da reserva, o saldo bancário informado.
+- Permitir excluir diretamente no extrato cada lançamento autorizado, com atualização dos totais do mês.
+- Ao remover uma dívida compartilhada, remover também parcelas vinculadas para que lançamentos órfãos não continuem somando como débito; ignorar parcelas órfãs em totais já existentes.
+
+
+## [x] 17. Gestão e agendamento configurável das tarefas da casa
+- Permitir adicionar, editar e excluir tarefas compartilhadas, incluindo título e observações.
+- Configurar responsável por tarefa: Douglas, Bruna, ambos ou alternância; na alternância, escolher a data inicial e quem começa.
+- Configurar repetição mensal ou semanal nos dias da semana selecionados; permitir selecionar todos ou apenas alguns dias.
+- Definir período manhã/tarde/noite/livre e horário opcional; ordenar as tarefas pela programação e deixar as tarefas sem horário definido no grupo Livre.
+- Definir datas de início e término opcionais; sem término a tarefa permanece recorrente. Sincronizar as definições e incluí-las em backup/restore compartilhado.
